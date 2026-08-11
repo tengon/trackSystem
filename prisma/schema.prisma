@@ -1,0 +1,84 @@
+// GPS Tracker Platform Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Device {
+  id            String   @id @default(cuid())
+  name          String
+  type          String   @default("vehicle") // vehicle, person, pet, asset
+  status        String   @default("offline") // online, offline, idle
+  iconColor     String   @default("#22c55e")
+  lastLatitude  Float?
+  lastLongitude Float?
+  lastSpeed     Float    @default(0)
+  lastHeading   Float    @default(0)
+  batteryLevel  Int      @default(100)
+  phoneNumber   String?
+  imei          String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  locations LocationRecord[]
+  geofences Geofence[]
+  alerts    Alert[]
+}
+
+model LocationRecord {
+  id          String   @id @default(cuid())
+  deviceId    String
+  latitude    Float
+  longitude   Float
+  speed       Float    @default(0)
+  heading     Float    @default(0)
+  altitude    Float    @default(0)
+  batteryLevel Int     @default(100)
+  accuracy    Float    @default(0)
+  timestamp   DateTime @default(now())
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId])
+  @@index([timestamp])
+}
+
+model Geofence {
+  id        String   @id @default(cuid())
+  name      String
+  deviceId  String
+  latitude  Float
+  longitude Float
+  radius    Float    @default(500)
+  type      String   @default("both") // enter, exit, both
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  alerts  Alert[]
+
+  @@index([deviceId])
+}
+
+model Alert {
+  id         String   @id @default(cuid())
+  deviceId   String
+  geofenceId String?
+  type       String   // geofence_enter, geofence_exit, low_battery, sos, speed_limit
+  message    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  device  Device  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  geofence Geofence? @relation(fields: [geofenceId], references: [id], onDelete: SetNull)
+
+  @@index([deviceId])
+  @@index([read])
+  @@index([createdAt])
+}
