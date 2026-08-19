@@ -67,3 +67,24 @@ Stage Summary:
 - Filters (type, status, search) work across all groups
 - Unassigned devices shown in "Tidak Ditugaskan" group
 - All forms (add/edit device) include user assignment selector
+
+---
+Task ID: 9
+Agent: Main Agent
+Task: Fix demo account login not working
+
+Work Log:
+- Root cause 1: Users in DB had empty password (default "") instead of hashed "password123"
+- Root cause 2: Login page demo button used email "budi@gps.com" but DB user is "ahmad@gps.com"
+- Root cause 3: Login page read error key "err.error" but API returns "err.message"
+- Fixed passwords in DB using hashPassword('password123') for all 3 users
+- Updated login-page.tsx: changed "Budi Admin / budi@gps.com" to "Ahmad Admin / ahmad@gps.com"
+- Updated login-page.tsx: fixed error message key from err.error to err.message
+- Updated seed-devices.ts to hash passwords when creating users
+- Verified all 3 demo accounts login successfully via API
+- Verified wrong password and non-existent user are properly rejected
+
+Stage Summary:
+- All 3 demo accounts (admin, ahmad, siti) now login correctly with password "password123"
+- Error messages display properly on failed login
+- Seed script creates users with correct hashed passwords

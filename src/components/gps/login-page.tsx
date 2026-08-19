@@ -9,7 +9,7 @@ import { useGPSStore, CurrentUser } from '@/store/gps-store';
 
 const DEMO_ACCOUNTS = [
   { label: 'Super Admin', email: 'admin@gps.com' },
-  { label: 'Budi Admin', email: 'budi@gps.com' },
+  { label: 'Ahmad Admin', email: 'ahmad@gps.com' },
   { label: 'Siti User', email: 'siti@gps.com' },
 ];
 
@@ -34,7 +34,7 @@ export default function LoginPage() {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || 'Login gagal');
+        throw new Error(err.message || 'Login gagal');
       }
 
       const { user } = await res.json();

@@ -1,11 +1,13 @@
 import { db } from '../src/lib/db';
+import { hashPassword } from '../src/lib/password';
 
 async function seed() {
-  // Create users
+  // Create users with hashed password
+  const hashedPw = hashPassword('password123');
   const users = await db.user.createMany({ data: [
-    { name: 'Admin Utama', email: 'admin@gps.com', role: 'super_admin', active: true },
-    { name: 'Ahmad Rizki', email: 'ahmad@gps.com', role: 'admin', active: true },
-    { name: 'Siti Nurhaliza', email: 'siti@gps.com', role: 'user', active: true },
+    { name: 'Admin Utama', email: 'admin@gps.com', password: hashedPw, role: 'super_admin', active: true },
+    { name: 'Ahmad Rizki', email: 'ahmad@gps.com', password: hashedPw, role: 'admin', active: true },
+    { name: 'Siti Nurhaliza', email: 'siti@gps.com', password: hashedPw, role: 'user', active: true },
   ] });
   const allUsers = await db.user.findMany();
   console.log('Created', allUsers.length, 'users');
