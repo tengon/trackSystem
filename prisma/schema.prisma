@@ -1,5 +1,4 @@
 // GPS Tracker Platform Schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,11 +8,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id       String   @id @default(cuid())
+  name     String
+  email    String   @unique
+  password String   @default("")
+  role     String   @default("user") // super_admin, admin, user
+  active   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Device {
   id            String   @id @default(cuid())
   name          String
-  type          String   @default("vehicle") // vehicle, person, pet, asset
-  status        String   @default("offline") // online, offline, idle
+  type          String   @default("vehicle")
+  status        String   @default("offline")
   iconColor     String   @default("#22c55e")
   lastLatitude  Float?
   lastLongitude Float?
@@ -56,7 +66,7 @@ model Geofence {
   latitude  Float
   longitude Float
   radius    Float    @default(500)
-  type      String   @default("both") // enter, exit, both
+  type      String   @default("both")
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
@@ -70,7 +80,7 @@ model Alert {
   id         String   @id @default(cuid())
   deviceId   String
   geofenceId String?
-  type       String   // geofence_enter, geofence_exit, low_battery, sos, speed_limit
+  type       String
   message    String
   read       Boolean  @default(false)
   createdAt  DateTime @default(now())

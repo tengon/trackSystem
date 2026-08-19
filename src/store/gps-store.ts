@@ -78,7 +78,25 @@ interface RealtimePosition {
   timestamp: string;
 }
 
+export interface CurrentUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 interface GPSStore {
+  // Auth
+  isAuthenticated: boolean;
+  setIsAuthenticated: (auth: boolean) => void;
+  currentUser: CurrentUser | null;
+  setCurrentUser: (user: CurrentUser | null) => void;
+  logout: () => void;
+
+  // Navigation
+  activeNavTab: 'monitor' | 'report' | 'device' | 'account' | 'fleet';
+  setActiveNavTab: (tab: 'monitor' | 'report' | 'device' | 'account' | 'fleet') => void;
+
   // Devices
   devices: Device[];
   selectedDeviceId: string | null;
@@ -113,6 +131,30 @@ interface GPSStore {
 }
 
 export const useGPSStore = create<GPSStore>((set) => ({
+  // Auth
+  isAuthenticated: false,
+  setIsAuthenticated: (auth) => set({ isAuthenticated: auth }),
+  currentUser: null,
+  setCurrentUser: (user) => set({ currentUser: user }),
+  logout: () => set({
+    isAuthenticated: false,
+    currentUser: null,
+    activeNavTab: 'monitor',
+    devices: [],
+    selectedDeviceId: null,
+    stats: null,
+    alerts: [],
+    unreadCount: 0,
+    locationHistory: [],
+    geofences: [],
+    sidebarTab: 'devices',
+    showDeviceDetail: false,
+  }),
+
+  // Navigation
+  activeNavTab: 'monitor',
+  setActiveNavTab: (tab) => set({ activeNavTab: tab }),
+
   // Devices
   devices: [],
   selectedDeviceId: null,
