@@ -88,3 +88,31 @@ Stage Summary:
 - All 3 demo accounts (admin, ahmad, siti) now login correctly with password "password123"
 - Error messages display properly on failed login
 - Seed script creates users with correct hashed passwords
+
+---
+Task ID: 10
+Agent: Main Agent
+Task: Create fleet management panel with add fleet form
+
+Work Log:
+- Added Fleet model to prisma/schema.prisma (id, name, description, color, devices[])
+- Added fleetId field to Device model with Fleet relation
+- Pushed schema to DB, regenerated Prisma client
+- Created /api/fleets (GET all fleets with device count, POST create fleet with device connection)
+- Created /api/fleets/[id] (GET with devices, PUT update + device sync, DELETE unlink devices first)
+- Created FleetManagementPanel component with:
+  - Fleet cards in responsive grid (1/2/3 columns)
+  - Each card: color icon, name, description, status badges (online/idle/offline), device count
+  - Expandable device list per fleet
+  - Add/Edit dialog with: name, description, color picker, device multi-select with checkboxes
+  - Device search within dialog
+  - "Pilih Semua" button
+  - Delete confirmation with unlink message
+- Updated page.tsx to render FleetManagementPanel in fleet tab (replaced placeholder)
+- Verified API works: create fleet, list fleets, devices API includes fleetId
+
+Stage Summary:
+- Tab Armada now has full CRUD fleet management
+- Fleet form: nama, deskripsi, warna, pilih perangkat (checkbox list)
+- Fleet cards show device status breakdown and expandable device list
+- Devices not in any fleet are available for assignment

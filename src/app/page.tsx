@@ -41,6 +41,10 @@ const DeviceManagementPanel = dynamic(() => import('@/components/gps/device-mana
   loading: () => <div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>,
 });
 
+const FleetManagementPanel = dynamic(() => import('@/components/gps/fleet-management-panel'), {
+  loading: () => <div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>,
+});
+
 const NAV_TABS = [
   { value: 'monitor' as const, label: 'Monitor', icon: Monitor },
   { value: 'report' as const, label: 'Laporan', icon: FileText },
@@ -250,16 +254,7 @@ export default function GPSTrackerPage() {
       case 'account':
         return <UserManagementPanel />;
       case 'fleet':
-        return (
-          <div className="flex-1 flex items-center justify-center p-8">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto"><Building2 className="w-8 h-8 text-muted-foreground" /></div>
-              <h3 className="text-lg font-semibold">Manajemen Armada</h3>
-              <p className="text-sm text-muted-foreground max-w-sm">Kelompokkan perangkat ke dalam armada untuk memudahkan pemantauan.</p>
-              <p className="text-xs text-muted-foreground/60">Segera hadir</p>
-            </div>
-          </div>
-        );
+        return <FleetManagementPanel />;
       default: return null;
     }
   };
