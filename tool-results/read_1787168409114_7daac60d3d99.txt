@@ -1,0 +1,694 @@
+     1→'use client';
+     2→
+     3→import { useEffect, useState, useCallback } from 'react';
+     4→import { toast } from 'sonner';
+     5→import {
+     6→  Plus, Pencil, Trash2, Search, Building2,
+     7→  Car, Smartphone, Dog, Package, Wifi, WifiOff, Clock,
+     8→  ChevronDown, ChevronRight, Check,
+     9→} from 'lucide-react';
+    10→
+    11→import { Button } from '@/components/ui/button';
+    12→import { Input } from '@/components/ui/input';
+    13→import { Badge } from '@/components/ui/badge';
+    14→import { Label } from '@/components/ui/label';
+    15→import { Textarea } from '@/components/ui/textarea';
+    16→import {
+    17→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+    18→} from '@/components/ui/dialog';
+    19→import {
+    20→  AlertDialog, AlertDialogAction, AlertDialogCancel,
+    21→  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+    22→  AlertDialogHeader, AlertDialogTitle,
+    23→} from '@/components/ui/alert-dialog';
+    24→import { Skeleton } from '@/components/ui/skeleton';
+    25→
+    26→// ── Types ───────────────────────────────────────────────────────────
+    27→interface FleetDevice {
+    28→  id: string;
+    29→  name: string;
+    30→  type: string;
+    31→  status: string;
+    32→  iconColor: string;
+    33→  lastLatitude: number | null;
+    34→  lastLongitude: number | null;
+    35→  lastSpeed: number;
+    36→  batteryLevel: number;
+    37→  user?: { id: string; name: string };
+    38→}
+    39→
+    40→interface Fleet {
+    41→  id: string;
+    42→  name: string;
+    43→  description: string | null;
+    44→  color: string;
+    45→  createdAt: string;
+    46→  updatedAt: string;
+    47→  _count?: { devices: number };
+    48→  devices?: FleetDevice[];
+    49→}
+    50→
+    51→interface DeviceOption {
+    52→  id: string;
+    53→  name: string;
+    54→  type: string;
+    55→  status: string;
+    56→  iconColor: string;
+    57→  fleetId: string | null;
+    58→}
+    59→
+    60→interface FleetFormData {
+    61→  name: string;
+    62→  description: string;
+    63→  color: string;
+    64→  deviceIds: string[];
+    65→}
+    66→
+    67→const emptyForm: FleetFormData = {
+    68→  name: '',
+    69→  description: '',
+    70→  color: '#22c55e',
+    71→  deviceIds: [],
+    72→};
+    73→
+    74→// ── Constants ───────────────────────────────────────────────────────
+    75→const typeIcons: Record<string, React.ReactNode> = {
+    76→  vehicle: <Car className="w-4 h-4" />,
+    77→  person: <Smartphone className="w-4 h-4" />,
+    78→  pet: <Dog className="w-4 h-4" />,
+    79→  asset: <Package className="w-4 h-4" />,
+    80→};
+    81→
+    82→const typeLabels: Record<string, string> = {
+    83→  vehicle: 'Kendaraan',
+    84→  person: 'Orang',
+    85→  pet: 'Hewan',
+    86→  asset: 'Aset',
+    87→};
+    88→
+    89→const statusConfig: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
+    90→  online: { label: 'Aktif', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400', icon: <Wifi className="w-3 h-3" /> },
+    91→  offline: { label: 'Offline', className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', icon: <WifiOff className="w-3 h-3" /> },
+    92→  idle: { label: 'Idle', className: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400', icon: <Clock className="w-3 h-3" /> },
+    93→};
+    94→
+    95→const colorPresets = [
+    96→  '#22c55e', '#3b82f6', '#ef4444', '#f59e0b', '#8b5cf6',
+    97→  '#ec4899', '#06b6d4', '#f97316', '#6366f1', '#14b8a6',
+    98→];
+    99→
+   100→// ── Component ───────────────────────────────────────────────────────
+   101→export default function FleetManagementPanel() {
+   102→  const [fleets, setFleets] = useState<Fleet[]>([]);
+   103→  const [allDevices, setAllDevices] = useState<DeviceOption[]>([]);
+   104→  const [loading, setLoading] = useState(true);
+   105→  const [search, setSearch] = useState('');
+   106→  const [expandedFleet, setExpandedFleet] = useState<string | null>(null);
+   107→  const [expandedFleetData, setExpandedFleetData] = useState<Fleet | null>(null);
+   108→  const [loadingExpanded, setLoadingExpanded] = useState(false);
+   109→  const [deviceSearch, setDeviceSearch] = useState('');
+   110→
+   111→  // Dialog state
+   112→  const [dialogOpen, setDialogOpen] = useState(false);
+   113→  const [editingFleet, setEditingFleet] = useState<Fleet | null>(null);
+   114→  const [form, setForm] = useState<FleetFormData>(emptyForm);
+   115→  const [submitting, setSubmitting] = useState(false);
+   116→
+   117→  // Delete confirmation
+   118→  const [deleteTarget, setDeleteTarget] = useState<Fleet | null>(null);
+   119→  const [deleting, setDeleting] = useState(false);
+   120→
+   121→  // ── Fetch fleets & devices ────────────────────────────────────────
+   122→  const fetchData = useCallback(async () => {
+   123→    try {
+   124→      setLoading(true);
+   125→      const [fleetsRes, devicesRes] = await Promise.all([
+   126→        fetch('/api/fleets'),
+   127→        fetch('/api/devices'),
+   128→      ]);
+   129→      const [fleetsData, devicesData] = await Promise.all([
+   130→        fleetsRes.json(),
+   131→        devicesRes.json(),
+   132→      ]);
+   133→      setFleets(fleetsData);
+   134→      setAllDevices(devicesData);
+   135→    } catch {
+   136→      toast.error('Gagal memuat data armada');
+   137→    } finally {
+   138→      setLoading(false);
+   139→    }
+   140→  }, []);
+   141→
+   142→  useEffect(() => { fetchData(); }, [fetchData]);
+   143→
+   144→  // ── Filter ─────────────────────────────────────────────────────────
+   145→  const filteredFleets = fleets.filter((f) => {
+   146→    if (!search) return true;
+   147→    const q = search.toLowerCase();
+   148→    return f.name.toLowerCase().includes(q) || (f.description && f.description.toLowerCase().includes(q));
+   149→  });
+   150→
+   151→  // Available devices (not in any fleet, or in current editing fleet)
+   152→  const getAvailableDevices = useCallback(() => {
+   153→    return allDevices
+   154→      .filter((d) => {
+   155→        if (editingFleet && d.fleetId === editingFleet.id) return true;
+   156→        return !d.fleetId;
+   157→      })
+   158→      .filter((d) => {
+   159→        if (!deviceSearch) return true;
+   160→        return d.name.toLowerCase().includes(deviceSearch.toLowerCase());
+   161→      });
+   162→  }, [allDevices, editingFleet, deviceSearch]);
+   163→
+   164→  // ── Open create dialog ───────────────────────────────────────────
+   165→  const openCreate = () => {
+   166→    setEditingFleet(null);
+   167→    setForm(emptyForm);
+   168→    setDeviceSearch('');
+   169→    setDialogOpen(true);
+   170→  };
+   171→
+   172→  // ── Toggle fleet expansion (lazy-loads full devices) ──────────
+   173→  const handleToggleExpand = async (fleetId: string) => {
+   174→    if (expandedFleet === fleetId) {
+   175→      setExpandedFleet(null);
+   176→      setExpandedFleetData(null);
+   177→      return;
+   178→    }
+   179→    setExpandedFleet(fleetId);
+   180→    setExpandedFleetData(null);
+   181→    setLoadingExpanded(true);
+   182→    try {
+   183→      const res = await fetch(`/api/fleets/${fleetId}`);
+   184→      if (res.ok) {
+   185→        const data = await res.json();
+   186→        setExpandedFleetData(data);
+   187→        // Also update the fleet in the list with full data
+   188→        setFleets((prev) => prev.map((f) => f.id === fleetId ? { ...f, devices: data.devices } : f));
+   189→      }
+   190→    } catch {
+   191→      toast.error('Gagal memuat perangkat armada');
+   192→    } finally {
+   193→      setLoadingExpanded(false);
+   194→    }
+   195→  };
+   196→
+   197→  // ── Open edit dialog ─────────────────────────────────────────────
+   198→  const openEdit = async (fleet: Fleet) => {
+   199→    setEditingFleet(fleet);
+   200→    setForm({
+   201→      name: fleet.name,
+   202→      description: fleet.description || '',
+   203→      color: fleet.color,
+   204→      deviceIds: [],
+   205→    });
+   206→    setDialogOpen(true);
+   207→
+   208→    // Fetch full fleet with devices
+   209→    try {
+   210→      const res = await fetch(`/api/fleets/${fleet.id}`);
+   211→      if (res.ok) {
+   212→        const data = await res.json();
+   213→        setForm((prev) => ({
+   214→          ...prev,
+   215→          deviceIds: data.devices?.map((d: FleetDevice) => d.id) || [],
+   216→        }));
+   217→      }
+   218→    } catch { /* keep empty */ }
+   219→  };
+   220→
+   221→  // ── Toggle device in form ────────────────────────────────────────
+   222→  const toggleDevice = (deviceId: string) => {
+   223→    setForm((prev) => ({
+   224→      ...prev,
+   225→      deviceIds: prev.deviceIds.includes(deviceId)
+   226→        ? prev.deviceIds.filter((id) => id !== deviceId)
+   227→        : [...prev.deviceIds, deviceId],
+   228→    }));
+   229→  };
+   230→
+   231→  // ── Submit ───────────────────────────────────────────────────────
+   232→  const handleSubmit = async () => {
+   233→    if (!form.name.trim()) {
+   234→      toast.error('Nama armada wajib diisi');
+   235→      return;
+   236→    }
+   237→
+   238→    try {
+   239→      setSubmitting(true);
+   240→
+   241→      if (editingFleet) {
+   242→        const res = await fetch(`/api/fleets/${editingFleet.id}`, {
+   243→          method: 'PUT',
+   244→          headers: { 'Content-Type': 'application/json' },
+   245→          body: JSON.stringify({
+   246→            name: form.name,
+   247→            description: form.description || null,
+   248→            color: form.color,
+   249→            deviceIds: form.deviceIds,
+   250→          }),
+   251→        });
+   252→        if (!res.ok) {
+   253→          const data = await res.json();
+   254→          throw new Error(data.error || 'Gagal mengupdate armada');
+   255→        }
+   256→        toast.success('Armada berhasil diperbarui');
+   257→      } else {
+   258→        const res = await fetch('/api/fleets', {
+   259→          method: 'POST',
+   260→          headers: { 'Content-Type': 'application/json' },
+   261→          body: JSON.stringify({
+   262→            name: form.name,
+   263→            description: form.description || null,
+   264→            color: form.color,
+   265→            deviceIds: form.deviceIds,
+   266→          }),
+   267→        });
+   268→        if (!res.ok) {
+   269→          const data = await res.json();
+   270→          throw new Error(data.error || 'Gagal menambah armada');
+   271→        }
+   272→        toast.success('Armada berhasil ditambahkan');
+   273→      }
+   274→
+   275→      setDialogOpen(false);
+   276→      fetchData();
+   277→    } catch (err) {
+   278→      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan');
+   279→    } finally {
+   280→      setSubmitting(false);
+   281→    }
+   282→  };
+   283→
+   284→  // ── Delete ───────────────────────────────────────────────────────
+   285→  const handleDelete = async () => {
+   286→    if (!deleteTarget) return;
+   287→    try {
+   288→      setDeleting(true);
+   289→      const res = await fetch(`/api/fleets/${deleteTarget.id}`, { method: 'DELETE' });
+   290→      if (!res.ok) {
+   291→        const data = await res.json();
+   292→        throw new Error(data.error || 'Gagal menghapus armada');
+   293→      }
+   294→      toast.success('Armada berhasil dihapus');
+   295→      setDeleteTarget(null);
+   296→      setExpandedFleet(null);
+   297→      fetchData();
+   298→    } catch (err) {
+   299→      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan');
+   300→    } finally {
+   301→      setDeleting(false);
+   302→    }
+   303→  };
+   304→
+   305→  // ── Get device counts by status for a fleet ───────────────────────
+   306→  // NOTE: GET /api/fleets returns only 5 devices per fleet (preview),
+   307→  // so we use the full devices only when expanded (fetched via GET /api/fleets/:id).
+   308→  // For accurate counts, we check if fleet._count is available.
+   309→  const getFleetStatusCounts = (fleet: Fleet) => {
+   310→    if (!fleet.devices?.length) return { online: 0, idle: 0, offline: 0 };
+   311→    return {
+   312→      online: fleet.devices.filter((d) => d.status === 'online').length,
+   313→      idle: fleet.devices.filter((d) => d.status === 'idle').length,
+   314→      offline: fleet.devices.filter((d) => d.status === 'offline').length,
+   315→    };
+   316→  };
+   317→
+   318→  // ── Render ───────────────────────────────────────────────────────
+   319→  const availableDevices = getAvailableDevices();
+   320→
+   321→  return (
+   322→    <div className="flex flex-col gap-4 p-4 sm:p-6 overflow-y-auto flex-1 min-h-0">
+   323→      {/* Header */}
+   324→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+   325→        <div className="flex items-center gap-2">
+   326→          <Building2 className="w-5 h-5 text-primary" />
+   327→          <h2 className="text-lg font-semibold">Manajemen Armada</h2>
+   328→          <Badge variant="secondary" className="text-xs">
+   329→            {fleets.length} armada
+   330→          </Badge>
+   331→        </div>
+   332→        <div className="flex items-center gap-2">
+   333→          <div className="relative flex-1 sm:w-64">
+   334→            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+   335→            <Input
+   336→              placeholder="Cari armada..."
+   337→              value={search}
+   338→              onChange={(e) => setSearch(e.target.value)}
+   339→              className="pl-9 h-9"
+   340→            />
+   341→          </div>
+   342→          <Button onClick={openCreate} size="sm" className="gap-1.5">
+   343→            <Plus className="w-4 h-4" />
+   344→            Tambah Armada
+   345→          </Button>
+   346→        </div>
+   347→      </div>
+   348→
+   349→      {/* Loading */}
+   350→      {loading && (
+   351→        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+   352→          {Array.from({ length: 3 }).map((_, i) => (
+   353→            <div key={i} className="rounded-lg border bg-card p-4">
+   354→              <Skeleton className="h-5 w-32 mb-3" />
+   355→              <Skeleton className="h-3 w-48 mb-4" />
+   356→              <div className="flex gap-2">
+   357→                <Skeleton className="h-6 w-14" />
+   358→                <Skeleton className="h-6 w-14" />
+   359→                <Skeleton className="h-6 w-14" />
+   360→              </div>
+   361→            </div>
+   362→          ))}
+   363→        </div>
+   364→      )}
+   365→
+   366→      {/* Empty state */}
+   367→      {!loading && filteredFleets.length === 0 && (
+   368→        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+   369→          <Building2 className="w-12 h-12 mb-3 opacity-30" />
+   370→          <p className="text-sm font-medium">Belum ada armada</p>
+   371→          <p className="text-xs mt-1">Buat armada pertama untuk mengelompokkan perangkat</p>
+   372→        </div>
+   373→      )}
+   374→
+   375→      {/* Fleet Cards Grid */}
+   376→      {!loading && filteredFleets.length > 0 && (
+   377→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   378→          {filteredFleets.map((fleet) => {
+   379→            const isExpanded = expandedFleet === fleet.id;
+   380→            const counts = getFleetStatusCounts(fleet);
+   381→            const totalDevices = fleet._count?.devices ?? fleet.devices?.length ?? 0;
+   382→            const hasMoreDevices = fleet._count && fleet._count.devices > (fleet.devices?.length ?? 0);
+   383→
+   384→            return (
+   385→              <div
+   386→                key={fleet.id}
+   387→                className="rounded-lg border bg-card overflow-hidden transition-shadow hover:shadow-md"
+   388→              >
+   389→                {/* Card Header */}
+   390→                <div className="p-4">
+   391→                  <div className="flex items-start justify-between gap-2">
+   392→                    <div className="flex items-center gap-2.5 min-w-0">
+   393→                      <div
+   394→                        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+   395→                        style={{ backgroundColor: fleet.color + '18', color: fleet.color }}
+   396→                      >
+   397→                        <Building2 className="w-5 h-5" />
+   398→                      </div>
+   399→                      <div className="min-w-0">
+   400→                        <h3 className="font-semibold text-sm truncate">{fleet.name}</h3>
+   401→                        {fleet.description && (
+   402→                          <p className="text-xs text-muted-foreground truncate mt-0.5">{fleet.description}</p>
+   403→                        )}
+   404→                      </div>
+   405→                    </div>
+   406→                    <div className="flex items-center gap-1 shrink-0">
+   407→                      <Button
+   408→                        variant="ghost"
+   409→                        size="icon"
+   410→                        className="h-7 w-7"
+   411→                        onClick={() => openEdit(fleet)}
+   412→                      >
+   413→                        <Pencil className="w-3.5 h-3.5" />
+   414→                      </Button>
+   415→                      <Button
+   416→                        variant="ghost"
+   417→                        size="icon"
+   418→                        className="h-7 w-7 text-destructive hover:text-destructive"
+   419→                        onClick={() => setDeleteTarget(fleet)}
+   420→                      >
+   421→                        <Trash2 className="w-3.5 h-3.5" />
+   422→                      </Button>
+   423→                    </div>
+   424→                  </div>
+   425→
+   426→                  {/* Status badges */}
+   427→                  <div className="flex items-center gap-1.5 px-4 pb-3">
+   428→                    <Badge variant="secondary" className="text-[10px] gap-0.5">
+   429→                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+   430→                      {counts.online} aktif
+   431→                    </Badge>
+   432→                    <Badge variant="secondary" className="text-[10px] gap-0.5">
+   433→                      <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+   434→                      {counts.idle} idle
+   435→                    </Badge>
+   436→                    <Badge variant="secondary" className="text-[10px] gap-0.5">
+   437→                      <div className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+   438→                      {counts.offline} offline
+   439→                    </Badge>
+   440→                    <span className="text-[10px] text-muted-foreground ml-auto">
+   441→                      {totalDevices} perangkat
+   442→                    </span>
+   443→                  </div>
+   444→
+   445→                  {/* Expand toggle */}
+   446→                  <button
+   447→                    onClick={() => handleToggleExpand(fleet.id)}
+   448→                    className="w-full flex items-center justify-center gap-1.5 px-4 py-2 border-t text-xs text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+   449→                  >
+   450→                    {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+   451→                    {loadingExpanded && !expandedFleetData
+   452→                      ? 'Memuat...'
+   453→                      : isExpanded
+   454→                        ? 'Sembunyikan'
+   455→                        : `Lihat ${totalDevices} perangkat`}
+   456→                  </button>
+   457→                </div>
+   458→
+   459→                {/* Expanded device list */}
+   460→                {isExpanded && (
+   461→                  <div className="border-t max-h-64 overflow-y-auto">
+   462→                    {loadingExpanded && !expandedFleetData ? (
+   463→                      <div className="p-4 space-y-2">
+   464→                        {Array.from({ length: 3 }).map((_, i) => (
+   465→                          <div key={i} className="flex items-center gap-2.5">
+   466→                            <Skeleton className="w-7 h-7 rounded-md" />
+   467→                            <div className="flex-1 space-y-1">
+   468→                              <Skeleton className="h-3 w-32" />
+   469→                              <Skeleton className="h-2 w-20" />
+   470→                            </div>
+   471→                            <Skeleton className="h-4 w-10" />
+   472→                          </div>
+   473→                        ))}
+   474→                      </div>
+   475→                    ) : expandedFleetData?.devices && expandedFleetData.devices.length > 0 ? (
+   476→                      expandedFleetData.devices.map((device) => {
+   477→                        const status = statusConfig[device.status] || statusConfig.offline;
+   478→                        const icon = typeIcons[device.type] || <Package className="w-3.5 h-3.5" />;
+   479→                        return (
+   480→                          <div
+   481→                            key={device.id}
+   482→                            className="flex items-center gap-2.5 px-4 py-2.5 border-b last:border-b-0 hover:bg-muted/30 transition-colors"
+   483→                          >
+   484→                            <div
+   485→                              className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+   486→                              style={{ backgroundColor: device.iconColor + '18', color: device.iconColor }}
+   487→                            >
+   488→                              {icon}
+   489→                            </div>
+   490→                            <div className="flex-1 min-w-0">
+   491→                              <p className="text-xs font-medium truncate">{device.name}</p>
+   492→                              <p className="text-[10px] text-muted-foreground">
+   493→                                {typeLabels[device.type] || device.type}
+   494→                                {device.user ? ` · ${device.user.name}` : ''}
+   495→                              </p>
+   496→                            </div>
+   497→                            <div className="flex items-center gap-1.5 shrink-0">
+   498→                              {device.lastSpeed > 0 && (
+   499→                                <span className="text-[10px] text-muted-foreground">{Math.round(device.lastSpeed)} km/h</span>
+   500→                              )}
+   501→                              <Badge variant="secondary" className={`text-[9px] h-4 px-1.5 gap-0.5 ${status.className}`}>
+   502→                                {status.icon}
+   503→                                {status.label}
+   504→                              </Badge>
+   505→                            </div>
+   506→                          </div>
+   507→                        );
+   508→                      })
+   509→                    ) : (
+   510→                      <div className="p-4 text-center text-xs text-muted-foreground">
+   511→                        Tidak ada perangkat dalam armada ini
+   512→                      </div>
+   513→                    )}
+   514→                  </div>
+   515→                )}
+   516→              </div>
+   517→            );
+   518→          })}
+   519→        </div>
+   520→      )}
+   521→
+   522→      {/* Create / Edit Dialog */}
+   523→      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+   524→        <DialogContent className="sm:max-w-lg">
+   525→          <DialogHeader>
+   526→            <DialogTitle>
+   527→              {editingFleet ? 'Edit Armada' : 'Tambah Armada Baru'}
+   528→            </DialogTitle>
+   529→          </DialogHeader>
+   530→
+   531→          <div className="space-y-4 py-2 max-h-[65vh] overflow-y-auto">
+   532→            {/* Name */}
+   533→            <div className="space-y-2">
+   534→              <Label htmlFor="fleet-name">Nama Armada *</Label>
+   535→              <Input
+   536→                id="fleet-name"
+   537→                placeholder="Contoh: Armada Pengiriman Jakarta"
+   538→                value={form.name}
+   539→                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+   540→              />
+   541→            </div>
+   542→
+   543→            {/* Description */}
+   544→            <div className="space-y-2">
+   545→              <Label htmlFor="fleet-desc">Deskripsi</Label>
+   546→              <Textarea
+   547→                id="fleet-desc"
+   548→                placeholder="Deskripsi armada (opsional)"
+   549→                value={form.description}
+   550→                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+   551→                rows={2}
+   552→              />
+   553→            </div>
+   554→
+   555→            {/* Color */}
+   556→            <div className="space-y-2">
+   557→              <Label>Warna Armada</Label>
+   558→              <div className="flex flex-wrap gap-2">
+   559→                {colorPresets.map((color) => (
+   560→                  <button
+   561→                    key={color}
+   562→                    type="button"
+   563→                    className="w-8 h-8 rounded-full border-2 transition-all hover:scale-110"
+   564→                    style={{
+   565→                      backgroundColor: color,
+   566→                      borderColor: form.color === color ? 'var(--foreground)' : 'transparent',
+   567→                      boxShadow: form.color === color ? `0 0 0 2px var(--background), 0 0 0 4px ${color}` : 'none',
+   568→                    }}
+   569→                    onClick={() => setForm((f) => ({ ...f, color }))}
+   570→                    aria-label={`Pilih warna ${color}`}
+   571→                  />
+   572→                ))}
+   573→              </div>
+   574→              <div className="flex items-center gap-2 mt-2">
+   575→                <Label htmlFor="custom-fleet-color" className="text-xs text-muted-foreground shrink-0">
+   576→                  Kustom:
+   577→                </Label>
+   578→                <Input
+   579→                  id="custom-fleet-color"
+   580→                  type="color"
+   581→                  value={form.color}
+   582→                  onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
+   583→                  className="h-8 w-16 p-1 cursor-pointer"
+   584→                />
+   585→              </div>
+   586→            </div>
+   587→
+   588→            {/* Device selection */}
+   589→            <div className="space-y-2">
+   590→              <div className="flex items-center justify-between">
+   591→                <Label>Perangkat ({form.deviceIds.length} dipilih)</Label>
+   592→                <Button
+   593→                  type="button"
+   594→                  variant="ghost"
+   595→                  size="sm"
+   596→                  className="h-6 text-[10px]"
+   597→                  onClick={() => setForm((f) => ({ ...f, deviceIds: availableDevices.map((d) => d.id) }))}
+   598→                >
+   599→                  Pilih Semua
+   600→                </Button>
+   601→              </div>
+   602→              <Input
+   603→                placeholder="Cari perangkat..."
+   604→                value={deviceSearch}
+   605→                onChange={(e) => setDeviceSearch(e.target.value)}
+   606→                className="h-8 text-xs mb-2"
+   607→              />
+   608→              <div className="max-h-48 overflow-y-auto rounded-md border divide-y">
+   609→                {availableDevices.length === 0 ? (
+   610→                  <div className="p-4 text-center text-xs text-muted-foreground">
+   611→                    Tidak ada perangkat tersedia
+   612→                  </div>
+   613→                ) : (
+   614→                  availableDevices.map((device) => {
+   615→                    const isSelected = form.deviceIds.includes(device.id);
+   616→                    const icon = typeIcons[device.type] || <Package className="w-3.5 h-3.5" />;
+   617→                    return (
+   618→                      <button
+   619→                        key={device.id}
+   620→                        type="button"
+   621→                        onClick={() => toggleDevice(device.id)}
+   622→                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-muted/50 transition-colors cursor-pointer ${
+   623→                          isSelected ? 'bg-primary/5' : ''
+   624→                        }`}
+   625→                      >
+   626→                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+   627→                          isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30'
+   628→                        }`}>
+   629→                          {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+   630→                        </div>
+   631→                        <div
+   632→                          className="w-6 h-6 rounded flex items-center justify-center shrink-0"
+   633→                          style={{ backgroundColor: device.iconColor + '18', color: device.iconColor }}
+   634→                        >
+   635→                          {icon}
+   636→                        </div>
+   637→                        <span className="text-xs font-medium flex-1 truncate">{device.name}</span>
+   638→                        <Badge variant="secondary" className="text-[9px] h-4 px-1 gap-0.5">
+   639→                          <div className={`w-1.5 h-1.5 rounded-full ${
+   640→                            device.status === 'online' ? 'bg-emerald-500' :
+   641→                            device.status === 'idle' ? 'bg-amber-500' : 'bg-gray-400'
+   642→                          }`} />
+   643→                          {statusConfig[device.status]?.label || device.status}
+   644→                        </Badge>
+   645→                      </button>
+   646→                    );
+   647→                  })
+   648→                )}
+   649→              </div>
+   650→            </div>
+   651→          </div>
+   652→
+   653→          <DialogFooter>
+   654→            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+   655→              Batal
+   656→            </Button>
+   657→            <Button onClick={handleSubmit} disabled={submitting}>
+   658→              {submitting
+   659→                ? 'Menyimpan...'
+   660→                : editingFleet
+   661→                  ? 'Simpan Perubahan'
+   662→                  : 'Tambah Armada'}
+   663→            </Button>
+   664→          </DialogFooter>
+   665→        </DialogContent>
+   666→      </Dialog>
+   667→
+   668→      {/* Delete Confirmation */}
+   669→      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+   670→        <AlertDialogContent>
+   671→          <AlertDialogHeader>
+   672→            <AlertDialogTitle>Hapus Armada</AlertDialogTitle>
+   673→            <AlertDialogDescription>
+   674→              Apakah Anda yakin ingin menghapus armada{' '}
+   675→              <span className="font-semibold text-foreground">{deleteTarget?.name}</span>?
+   676→              Perangkat di dalam armada tidak akan dihapus, hanya dilepaskan dari armada ini.
+   677→            </AlertDialogDescription>
+   678→          </AlertDialogHeader>
+   679→          <AlertDialogFooter>
+   680→            <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
+   681→            <AlertDialogAction
+   682→              onClick={handleDelete}
+   683→              disabled={deleting}
+   684→              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+   685→            >
+   686→              {deleting ? 'Menghapus...' : 'Hapus'}
+   687→            </AlertDialogAction>
+   688→          </AlertDialogFooter>
+   689→        </AlertDialogContent>
+   690→      </AlertDialog>
+   691→    </div>
+   692→  );
+   693→}
+   694→

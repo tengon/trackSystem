@@ -3,9 +3,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import {
-  Plus, Pencil, Trash2, Search, Building2, Truck,
+  Plus, Pencil, Trash2, Search, Building2,
   Car, Smartphone, Dog, Package, Wifi, WifiOff, Clock,
-  ChevronDown, ChevronRight, X, Check,
+  ChevronDown, ChevronRight, Check,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -104,6 +104,8 @@ export default function FleetManagementPanel() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [expandedFleet, setExpandedFleet] = useState<string | null>(null);
+  const [expandedFleetData, setExpandedFleetData] = useState<Fleet | null>(null);
+  const [loadingExpanded, setLoadingExpanded] = useState(false);
   const [deviceSearch, setDeviceSearch] = useState('');
 
   // Dialog state
@@ -165,6 +167,31 @@ export default function FleetManagementPanel() {
     setForm(emptyForm);
     setDeviceSearch('');
     setDialogOpen(true);
+  };
+
+  // ── Toggle fleet expansion (lazy-loads full devices) ──────────
+  const handleToggleExpand = async (fleetId: string) => {
+    if (expandedFleet === fleetId) {
+      setExpandedFleet(null);
+      setExpandedFleetData(null);
+      return;
+    }
+    setExpandedFleet(fleetId);
+    setExpandedFleetData(null);
+    setLoadingExpanded(true);
+    try {
+      const res = await fetch(`/api/fleets/${fleetId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setExpandedFleetData(data);
+        // Also update the fleet in the list with full data
+        setFleets((prev) => prev.map((f) => f.id === fleetId ? { ...f, devices: data.devices } : f));
+      }
+    } catch {
+      toast.error('Gagal memuat perangkat armada');
+    } finally {
+      setLoadingExpanded(false);
+    }
   };
 
   // ── Open edit dialog ─────────────────────────────────────────────
@@ -276,6 +303,9 @@ export default function FleetManagementPanel() {
   };
 
   // ── Get device counts by status for a fleet ───────────────────────
+  // NOTE: GET /api/fleets returns only 5 devices per fleet (preview),
+  // so we use the full devices only when expanded (fetched via GET /api/fleets/:id).
+  // For accurate counts, we check if fleet._count is available.
   const getFleetStatusCounts = (fleet: Fleet) => {
     if (!fleet.devices?.length) return { online: 0, idle: 0, offline: 0 };
     return {
@@ -289,7 +319,7 @@ export default function FleetManagementPanel() {
   const availableDevices = getAvailableDevices();
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 p-4 sm:p-6 overflow-y-auto flex-1 min-h-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -394,15 +424,15 @@ export default function FleetManagementPanel() {
 
                   {/* Status badges */}
                   <div className="flex items-center gap-1.5 px-4 pb-3">
-                    <Badge variant="secondary" className="text-[10px] gap-0.5 {statusConfig.online.className}">
+                    <Badge variant="secondary" className="text-[10px] gap-0.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                       {counts.online} aktif
                     </Badge>
-                    <Badge variant="secondary" className="text-[10px] gap-0.5 {statusConfig.idle.className}">
+                    <Badge variant="secondary" className="text-[10px] gap-0.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                       {counts.idle} idle
                     </Badge>
-                    <Badge variant="secondary" className="text-[10px] gap-0.5 {statusConfig.offline.className}">
+                    <Badge variant="secondary" className="text-[10px] gap-0.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-gray-400" />
                       {counts.offline} offline
                     </Badge>
@@ -412,53 +442,74 @@ export default function FleetManagementPanel() {
                   </div>
 
                   {/* Expand toggle */}
-                  {fleet.devices && fleet.devices.length > 0 && (
-                    <button
-                      onClick={() => setExpandedFleet(isExpanded ? null : fleet.id)}
-                      className="w-full flex items-center justify-center gap-1.5 px-4 py-2 border-t text-xs text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
-                    >
-                      {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                      {isExpanded ? 'Sembunyikan' : `Lihat ${fleet.devices.length} perangkat`}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleToggleExpand(fleet.id)}
+                    className="w-full flex items-center justify-center gap-1.5 px-4 py-2 border-t text-xs text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                  >
+                    {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                    {loadingExpanded && !expandedFleetData
+                      ? 'Memuat...'
+                      : isExpanded
+                        ? 'Sembunyikan'
+                        : `Lihat ${totalDevices} perangkat`}
+                  </button>
                 </div>
 
                 {/* Expanded device list */}
-                {isExpanded && fleet.devices && fleet.devices.length > 0 && (
+                {isExpanded && (
                   <div className="border-t max-h-64 overflow-y-auto">
-                    {fleet.devices.map((device) => {
-                      const status = statusConfig[device.status] || statusConfig.offline;
-                      const icon = typeIcons[device.type] || <Package className="w-3.5 h-3.5" />;
-                      return (
-                        <div
-                          key={device.id}
-                          className="flex items-center gap-2.5 px-4 py-2.5 border-b last:border-b-0 hover:bg-muted/30 transition-colors"
-                        >
+                    {loadingExpanded && !expandedFleetData ? (
+                      <div className="p-4 space-y-2">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                          <div key={i} className="flex items-center gap-2.5">
+                            <Skeleton className="w-7 h-7 rounded-md" />
+                            <div className="flex-1 space-y-1">
+                              <Skeleton className="h-3 w-32" />
+                              <Skeleton className="h-2 w-20" />
+                            </div>
+                            <Skeleton className="h-4 w-10" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : expandedFleetData?.devices && expandedFleetData.devices.length > 0 ? (
+                      expandedFleetData.devices.map((device) => {
+                        const status = statusConfig[device.status] || statusConfig.offline;
+                        const icon = typeIcons[device.type] || <Package className="w-3.5 h-3.5" />;
+                        return (
                           <div
-                            className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
-                            style={{ backgroundColor: device.iconColor + '18', color: device.iconColor }}
+                            key={device.id}
+                            className="flex items-center gap-2.5 px-4 py-2.5 border-b last:border-b-0 hover:bg-muted/30 transition-colors"
                           >
-                            {icon}
+                            <div
+                              className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+                              style={{ backgroundColor: device.iconColor + '18', color: device.iconColor }}
+                            >
+                              {icon}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate">{device.name}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {typeLabels[device.type] || device.type}
+                                {device.user ? ` · ${device.user.name}` : ''}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {device.lastSpeed > 0 && (
+                                <span className="text-[10px] text-muted-foreground">{Math.round(device.lastSpeed)} km/h</span>
+                              )}
+                              <Badge variant="secondary" className={`text-[9px] h-4 px-1.5 gap-0.5 ${status.className}`}>
+                                {status.icon}
+                                {status.label}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate">{device.name}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {typeLabels[device.type] || device.type}
-                              {device.user ? ` · ${device.user.name}` : ''}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {device.lastSpeed > 0 && (
-                              <span className="text-[10px] text-muted-foreground">{Math.round(device.lastSpeed)} km/h</span>
-                            )}
-                            <Badge variant="secondary" className={`text-[9px] h-4 px-1.5 gap-0.5 ${status.className}`}>
-                              {status.icon}
-                              {status.label}
-                            </Badge>
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    ) : (
+                      <div className="p-4 text-center text-xs text-muted-foreground">
+                        Tidak ada perangkat dalam armada ini
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

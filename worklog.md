@@ -142,3 +142,27 @@ Stage Summary:
 - API endpoints (GET, POST, PUT, DELETE) berfungsi dengan benar
 - Validasi sisi backend (nama wajib diisi) berfungsi
 - Server dev sering ter-kill oleh OOM saat browser test, tapi API verification via curl berhasil
+---
+Task ID: 1
+Agent: main
+Task: Verify and improve fleet management armada feature
+
+Work Log:
+- Verified Fleet model exists in prisma/schema.prisma (name, description, color, devices relation)
+- Verified API endpoints exist: GET/POST /api/fleets, GET/PUT/DELETE /api/fleets/[id]
+- Verified FleetManagementPanel component exists with full CRUD form
+- Verified page.tsx routes activeNavTab=fleet to <FleetManagementPanel />
+- Fixed template literal bug on fleet card status badges (className was plain text, not interpolated)
+- Added padding (p-4 sm:p-6) and scrolling (overflow-y-auto flex-1 min-h-0) to fleet panel
+- Applied same padding/scrolling fix to device-management-panel and user-management-panel for consistency
+- Added lazy-loading for fleet expansion: fetches full device list via GET /api/fleets/:id when expanding
+- Added loading skeleton state for expanded fleet device list
+- Added empty state for expanded fleet with no devices
+- Removed unused imports (X, Truck)
+- Removed unused hasMoreDevices variable
+
+Stage Summary:
+- Fleet management feature was already fully implemented from a previous session
+- Fixed 3 bugs: template literal interpolation, missing padding/scroll, incomplete device loading on expand
+- All panels (device, user, fleet) now have consistent padding and scrolling
+- Lint passes clean

@@ -288,7 +288,7 @@ export default function DeviceManagementPanel() {
 
   // ── Render ───────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 p-4 sm:p-6 overflow-y-auto flex-1 min-h-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-2">
