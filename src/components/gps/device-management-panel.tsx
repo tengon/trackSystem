@@ -71,9 +71,18 @@ interface Device {
   lastLongitude: number | null;
   lastSpeed: number;
   batteryLevel: number;
+  userId: string | null;
   createdAt: string;
   updatedAt: string;
+  user?: { id: string; name: string; email: string; role: string };
   _count?: { alerts: number };
+}
+
+interface UserOption {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
 }
 
 interface DeviceFormData {
@@ -83,6 +92,7 @@ interface DeviceFormData {
   phoneNumber: string;
   imei: string;
   notes: string;
+  userId: string;
 }
 
 const emptyForm: DeviceFormData = {
@@ -92,6 +102,7 @@ const emptyForm: DeviceFormData = {
   phoneNumber: '',
   imei: '',
   notes: '',
+  userId: '',
 };
 
 // ── Constants ───────────────────────────────────────────────────────
@@ -137,6 +148,7 @@ export default function DeviceManagementPanel() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [users, setUsers] = useState<UserOption[]>([]);
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -147,6 +159,14 @@ export default function DeviceManagementPanel() {
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<Device | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // ── Fetch users ──────────────────────────────────────────────────
+  useEffect(() => {
+    fetch('/api/users')
+      .then((res) => res.json())
+      .then((data) => { if (Array.isArray(data)) setUsers(data); })
+      .catch(() => {});
+  }, []);
 
   // ── Fetch devices ────────────────────────────────────────────────
   const fetchDevices = useCallback(async () => {
@@ -196,6 +216,7 @@ export default function DeviceManagementPanel() {
       phoneNumber: device.phoneNumber || '',
       imei: device.imei || '',
       notes: device.notes || '',
+      userId: device.userId || '',
     });
     setDialogOpen(true);
   };
@@ -325,11 +346,12 @@ export default function DeviceManagementPanel() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="w-48">Nama</TableHead>
-                  <TableHead className="w-32">Tipe</TableHead>
-                  <TableHead className="w-24">Status</TableHead>
-                  <TableHead>IMEI</TableHead>
-                  <TableHead>No. HP</TableHead>
+                  <TableHead className="w-44">Nama</TableHead>
+                  <TableHead className="w-28">User</TableHead>
+                  <TableHead className="w-24">Tipe</TableHead>
+                  <TableHead className="w-20">Status</TableHead>
+                  <TableHead className="hidden xl:table-cell">IMEI</TableHead>
+                  <TableHead className="hidden xl:table-cell">No. HP</TableHead>
                   <TableHead className="w-28 text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -356,6 +378,13 @@ export default function DeviceManagementPanel() {
                             )}
                           </div>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {device.user ? (
+                          <span className="text-sm text-muted-foreground">{device.user.name}</span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground/50">-</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -433,6 +462,10 @@ export default function DeviceManagementPanel() {
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
+                      <span className="text-muted-foreground">User: </span>
+                      <span>{device.user?.name || '-'}</span>
+                    </div>
+                    <div>
                       <span className="text-muted-foreground">IMEI: </span>
                       <span className="font-mono">{device.imei || '-'}</span>
                     </div>
@@ -487,6 +520,26 @@ export default function DeviceManagementPanel() {
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="device-user">Ditugaskan ke User</Label>
+              <Select
+                value={form.userId}
+                onValueChange={(v) => setForm((f) => ({ ...f, userId: v }))}
+              >
+                <SelectTrigger id="device-user">
+                  <SelectValue placeholder="Pilih user (opsional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Tanpa User</SelectItem>
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name} ({u.role})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

@@ -7,10 +7,12 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type');
     const status = searchParams.get('status');
     const search = searchParams.get('search');
+    const userId = searchParams.get('userId');
 
     const where: Record<string, unknown> = {};
     if (type) where.type = type;
     if (status) where.status = status;
+    if (userId) where.userId = userId;
     if (search) {
       where.OR = [
         { name: { contains: search } },
@@ -23,6 +25,9 @@ export async function GET(request: NextRequest) {
       where,
       orderBy: { updatedAt: 'desc' },
       include: {
+        user: {
+          select: { id: true, name: true, email: true, role: true },
+        },
         _count: {
           select: { alerts: { where: { read: false } } },
         },
@@ -39,7 +44,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, type, iconColor, phoneNumber, imei, notes } = body;
+    const { name, type, iconColor, phoneNumber, imei, notes, userId } = body;
 
     if (!name) {
       return NextResponse.json({ error: 'Device name is required' }, { status: 400 });
@@ -53,6 +58,12 @@ export async function POST(request: NextRequest) {
         phoneNumber: phoneNumber || null,
         imei: imei || null,
         notes: notes || null,
+        userId: userId || null,
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, role: true },
+        },
       },
     });
 

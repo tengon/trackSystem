@@ -1,5 +1,12 @@
 import { create } from 'zustand';
 
+export interface DeviceUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 export interface Device {
   id: string;
   name: string;
@@ -14,8 +21,10 @@ export interface Device {
   phoneNumber: string | null;
   imei: string | null;
   notes: string | null;
+  userId: string | null;
   createdAt: string;
   updatedAt: string;
+  user?: DeviceUser;
   _count?: { alerts: number };
 }
 

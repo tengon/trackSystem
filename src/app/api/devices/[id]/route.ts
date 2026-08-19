@@ -10,6 +10,9 @@ export async function GET(
     const device = await db.device.findUnique({
       where: { id },
       include: {
+        user: {
+          select: { id: true, name: true, email: true, role: true },
+        },
         geofences: true,
         _count: {
           select: {
@@ -38,18 +41,25 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, type, status, iconColor, phoneNumber, imei, notes } = body;
+    const { name, type, status, iconColor, phoneNumber, imei, notes, userId } = body;
+
+    const updateData: Record<string, unknown> = {};
+    if (name !== undefined) updateData.name = name;
+    if (type !== undefined) updateData.type = type;
+    if (status !== undefined) updateData.status = status;
+    if (iconColor !== undefined) updateData.iconColor = iconColor;
+    if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber || null;
+    if (imei !== undefined) updateData.imei = imei || null;
+    if (notes !== undefined) updateData.notes = notes || null;
+    if (userId !== undefined) updateData.userId = userId || null;
 
     const device = await db.device.update({
       where: { id },
-      data: {
-        ...(name && { name }),
-        ...(type && { type }),
-        ...(status && { status }),
-        ...(iconColor && { iconColor }),
-        ...(phoneNumber !== undefined && { phoneNumber: phoneNumber || null }),
-        ...(imei !== undefined && { imei: imei || null }),
-        ...(notes !== undefined && { notes: notes || null }),
+      data: updateData,
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, role: true },
+        },
       },
     });
 

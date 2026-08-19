@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,12 +21,20 @@ const colorOptions = [
   '#8b5cf6', '#ec4899', '#14b8a6', '#f97316',
 ];
 
+interface UserOption {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 export default function AddDeviceDialog() {
   const setSidebarTab = useGPSStore((s) => s.setSidebarTab);
   const setDevices = useGPSStore((s) => s.setDevices);
   const devices = useGPSStore((s) => s.devices);
 
   const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<UserOption[]>([]);
   const [form, setForm] = useState({
     name: '',
     type: 'vehicle',
@@ -34,7 +42,18 @@ export default function AddDeviceDialog() {
     phoneNumber: '',
     imei: '',
     notes: '',
+    userId: '',
   });
+
+  // Fetch users for the dropdown
+  useEffect(() => {
+    fetch('/api/users')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setUsers(data);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +67,10 @@ export default function AddDeviceDialog() {
       const res = await fetch('/api/devices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          userId: form.userId || null,
+        }),
       });
 
       if (!res.ok) throw new Error('Failed to create device');
@@ -78,7 +100,7 @@ export default function AddDeviceDialog() {
         <h3 className="text-sm font-semibold">Tambah Perangkat</h3>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3 flex-1">
+      <form onSubmit={handleSubmit} className="space-y-3 flex-1 overflow-y-auto">
         <div className="space-y-1.5">
           <Label className="text-xs">Nama Perangkat *</Label>
           <Input
@@ -87,6 +109,23 @@ export default function AddDeviceDialog() {
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             className="h-8 text-xs"
           />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">Ditugaskan ke User</Label>
+          <Select value={form.userId} onValueChange={(v) => setForm({ ...form, userId: v })}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Pilih user (opsional)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Tanpa User</SelectItem>
+              {users.map((u) => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.name} ({u.role})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-1.5">
@@ -106,7 +145,7 @@ export default function AddDeviceDialog() {
 
         <div className="space-y-1.5">
           <Label className="text-xs">Warna Ikon</Label>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {colorOptions.map((color) => (
               <button
                 key={color}

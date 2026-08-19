@@ -35,3 +35,35 @@ Stage Summary:
 - User Management under Akun tab (full CRUD, super_admin only)
 - Device Management under Perangkat tab (full CRUD, color picker)
 - All API routes working: /api/auth/login, /api/current-user, /api/users, /api/devices, /api/dashboard, /api/alerts, /api/geofences
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Implement tree model for device list grouped by user
+
+Work Log:
+- Added userId field to Device model in prisma/schema.prisma with User relation
+- Pushed schema to DB with db:push
+- Updated Device interface in gps-store.ts to include userId and user fields
+- Updated /api/devices GET to include user relation data
+- Updated /api/devices POST to accept userId
+- Updated /api/devices/[id] PUT to accept userId, GET to include user
+- Rewrote device-list.tsx as tree model with collapsible UserTreeNode components
+  - Devices grouped by user with expand/collapse
+  - Role badges (S.Admin, Admin, User)
+  - Online/total count per user group
+  - Unassigned devices shown in separate group (Tidak Ditugaskan)
+  - Search and filter work across tree groups
+  - Expand/collapse all button
+- Updated add-device-dialog.tsx with user selector dropdown
+- Updated device-management-panel.tsx with User column in table and user selector in dialog
+- Created seed script with 21 demo devices (15 assigned, 6 unassigned) across 3 users
+- Verified API returns correct tree grouping via curl
+
+Stage Summary:
+- Tree model device list implemented with user grouping
+- Each user node shows: name, role badge, online/total device count
+- Devices shown as child nodes under each user with left border tree line
+- Filters (type, status, search) work across all groups
+- Unassigned devices shown in "Tidak Ditugaskan" group
+- All forms (add/edit device) include user assignment selector
