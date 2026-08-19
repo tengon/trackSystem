@@ -95,6 +95,8 @@ interface DeviceFormData {
   userId: string;
 }
 
+const NO_USER = '__none__';
+
 const emptyForm: DeviceFormData = {
   name: '',
   type: 'vehicle',
@@ -102,7 +104,7 @@ const emptyForm: DeviceFormData = {
   phoneNumber: '',
   imei: '',
   notes: '',
-  userId: '',
+  userId: NO_USER,
 };
 
 // ── Constants ───────────────────────────────────────────────────────
@@ -216,7 +218,7 @@ export default function DeviceManagementPanel() {
       phoneNumber: device.phoneNumber || '',
       imei: device.imei || '',
       notes: device.notes || '',
-      userId: device.userId || '',
+      userId: device.userId || NO_USER,
     });
     setDialogOpen(true);
   };
@@ -235,7 +237,7 @@ export default function DeviceManagementPanel() {
         const res = await fetch(`/api/devices/${editingDevice.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+          body: JSON.stringify({ ...form, userId: form.userId === NO_USER ? null : form.userId }),
         });
         if (!res.ok) {
           const data = await res.json();
@@ -246,7 +248,7 @@ export default function DeviceManagementPanel() {
         const res = await fetch('/api/devices', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form),
+          body: JSON.stringify({ ...form, userId: form.userId === NO_USER ? null : form.userId }),
         });
         if (!res.ok) {
           const data = await res.json();
@@ -532,7 +534,7 @@ export default function DeviceManagementPanel() {
                   <SelectValue placeholder="Pilih user (opsional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tanpa User</SelectItem>
+                  <SelectItem value="__none__">Tanpa User</SelectItem>
                   {users.map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.name} ({u.role})

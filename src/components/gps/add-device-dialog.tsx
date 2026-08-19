@@ -42,7 +42,7 @@ export default function AddDeviceDialog() {
     phoneNumber: '',
     imei: '',
     notes: '',
-    userId: '',
+    userId: '__none__',
   });
 
   // Fetch users for the dropdown
@@ -69,7 +69,7 @@ export default function AddDeviceDialog() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
-          userId: form.userId || null,
+          userId: form.userId === '__none__' ? null : form.userId,
         }),
       });
 
@@ -118,7 +118,7 @@ export default function AddDeviceDialog() {
               <SelectValue placeholder="Pilih user (opsional)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Tanpa User</SelectItem>
+              <SelectItem value="__none__">Tanpa User</SelectItem>
               {users.map((u) => (
                 <SelectItem key={u.id} value={u.id}>
                   {u.name} ({u.role})
