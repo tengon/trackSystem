@@ -30,7 +30,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-ENV DATABASE_URL="file:/app/db/custom.db"
+ENV DATABASE_URL="postgresql://postgres:postgres@postgres:5432/tracking_db?schema=public"
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
@@ -41,9 +41,6 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/db ./db
-
-RUN mkdir -p /app/db && chown -R nextjs:nodejs /app
 
 USER nextjs
 

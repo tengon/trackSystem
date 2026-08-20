@@ -9,7 +9,7 @@ RUN bunx prisma generate
 
 COPY . .
 
-ENV DATABASE_URL="file:/app/db/custom.db"
+ENV DATABASE_URL="postgresql://postgres:postgres@postgres:5432/tracking_db?schema=public"
 ENV PORT=3001
 
 EXPOSE 3001

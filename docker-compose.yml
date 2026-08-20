@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tracking-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: tracking_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tracking_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   app:
     build:
       context: .
@@ -8,9 +26,10 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=file:/app/db/custom.db
-    volumes:
-      - sqlite_data:/app/db
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/tracking_db?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   gps-service:
@@ -21,10 +40,11 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - DATABASE_URL=file:/app/db/custom.db
-    volumes:
-      - sqlite_data:/app/db
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/tracking_db?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
-  sqlite_data:
+  postgres_data:
