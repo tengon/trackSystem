@@ -1,0 +1,30 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tracking-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/db/custom.db
+    volumes:
+      - sqlite_data:/app/db
+    restart: unless-stopped
+
+  gps-service:
+    build:
+      context: ./mini-services/gps-tracking-service
+      dockerfile: Dockerfile
+    container_name: tracking-gps-service
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=file:/app/db/custom.db
+    volumes:
+      - sqlite_data:/app/db
+    restart: unless-stopped
+
+volumes:
+  sqlite_data:
