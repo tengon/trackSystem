@@ -64,28 +64,28 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-slate-950 overflow-hidden p-4">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden p-4">
       {/* Full-bleed Background Wallpaper Image */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-85"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: "url('/images/login_back.png')" }}
       />
       {/* Transparent Dark Ambient Layer */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-slate-950/90 via-slate-950/50 to-blue-950/30 backdrop-brightness-95" />
+      <div className="absolute inset-0 bg-gradient-to-tr backdrop-brightness-95" />
 
       {/* Decorative Electric Glow Orbs */}
       <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-600/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-[28rem] w-[28rem] rounded-full bg-cyan-500/20 blur-3xl" />
 
       {/* Transparent Electric Blue Glassmorphism Card */}
-      <div className="relative z-10 w-full max-w-md rounded-3xl border border-blue-500/30 bg-slate-950/40 p-8 shadow-2xl shadow-blue-950/80 backdrop-blur-2xl sm:p-10 transition-all ring-1 ring-blue-500/20">
+      <div className="relative z-10 w-full max-w-md rounded-[15px] border border-blue-500/30 bg-transparent p-8 shadow-2xl shadow-blue-950/80 sm:p-10 transition-all ring-1 ring-blue-500/20">
         {/* Header */}
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-blue-500/10 p-2.5 border border-blue-400/30 shadow-lg shadow-blue-500/20 backdrop-blur-md ring-1 ring-cyan-400/20">
             <img src="/images/truck_loc_icon.png" alt="GPS Tracker Logo" className="h-14 w-14 object-contain drop-shadow-md" />
           </div>
-          <h1 className="text-2xl font-extrabold text-white tracking-wide drop-shadow-md">Ikutin Aja</h1>
-          <p className="mt-1 text-xs font-semibold text-cyan-400 tracking-wider uppercase">Platform Pelacakan Real-time</p>
+          <h1 className="text-2xl font-extrabold text-blue-950 tracking-wide drop-shadow-md">Ikutin Aja</h1>
+          <p className="mt-1 text-xs font-semibold text-blue-900 tracking-wider uppercase">Platform Pelacakan Real-time</p>
         </div>
 
         {/* Form */}
