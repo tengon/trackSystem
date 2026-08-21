@@ -58,6 +58,8 @@ export default function LoginPage() {
   };
 
   const onQuickLogin = (accountEmail: string) => {
+    setEmail(accountEmail);
+    setPassword(DEMO_PASSWORD);
     handleLogin(accountEmail, DEMO_PASSWORD);
   };
 
