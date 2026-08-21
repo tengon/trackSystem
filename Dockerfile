@@ -1,17 +1,17 @@
 # Stage 1: Dependencies
-FROM oven/bun:1-alpine AS deps
+FROM node:20-alpine AS deps
 WORKDIR /app
 
 # Copy dependency manifests and Prisma schema
-COPY package.json bun.lock ./
+COPY package.json package-lock.json* bun.lock* ./
 COPY prisma ./prisma/
 
 # Install dependencies and generate Prisma Client
-RUN bun install
-RUN bunx prisma generate
+RUN npm install
+RUN npx prisma generate
 
 # Stage 2: Builder
-FROM oven/bun:1-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -21,10 +21,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
 # Run Next.js production build
-RUN bun run build
+RUN npm run build
 
 # Stage 3: Runner
-FROM oven/bun:1-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -46,4 +46,4 @@ USER nextjs
 
 EXPOSE 3000
 
-CMD ["bun", "server.js"]
+CMD ["node", "server.js"]

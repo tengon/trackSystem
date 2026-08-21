@@ -1,11 +1,11 @@
-FROM oven/bun:1-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
-COPY package.json bun.lock ./
+COPY package.json package-lock.json* bun.lock* ./
 COPY prisma ./prisma/
 
-RUN bun install
-RUN bunx prisma generate
+RUN npm install
+RUN npx prisma generate
 
 COPY . .
 
@@ -14,4 +14,4 @@ ENV PORT=3001
 
 EXPOSE 3001
 
-CMD ["bun", "index.ts"]
+CMD ["npx", "tsx", "index.ts"]
