@@ -21,7 +21,14 @@ export function createTeltonikaTcpServer(ioServer: SocketServer): net.Server {
 
     socket.on('data', async (data: Buffer) => {
       try {
-        console.log(`[Teltonika TCP] Received ${data.length} bytes from ${clientAddr}: ${data.toString('hex')}`);
+        const hexFormatted = data.toString('hex').match(/.{1,2}/g)?.join(' ') || data.toString('hex');
+        const asciiSafe = data.toString('ascii').replace(/[^\x20-\x7E]/g, '.');
+
+        console.log(`=======================================================`);
+        console.log(`📥 [RAW TCP DATA] (${data.length} bytes) from ${clientAddr}`);
+        console.log(`🔷 HEX  : ${hexFormatted}`);
+        console.log(`🔤 ASCII: ${asciiSafe}`);
+        console.log(`=======================================================`);
 
         // Check if direct AVL Data Packet (Preamble: 4 zero bytes 0x00000000)
         const isDirectAvl = data.length >= 15 && data.readUInt32BE(0) === 0;
@@ -31,21 +38,21 @@ export function createTeltonikaTcpServer(ioServer: SocketServer): net.Server {
           const imei = parseImeiHandshake(data);
           if (imei && imei.length >= 10 && imei.length <= 18) {
             authenticatedDevice = await deviceService.resolveOrCreateDevice(imei);
-            console.log(`[Teltonika TCP] IMEI ${imei} authenticated (${authenticatedDevice.name})`);
+            console.log(`✅ [Teltonika TCP] IMEI ${imei} authenticated (${authenticatedDevice.name})`);
 
             // Accept response: 1 byte 0x01
             socket.write(Buffer.from([0x01]));
+            console.log(`📤 [TELTONIKA ACK] Sent 0x01 ACCEPT byte to device`);
             return;
           } else {
-            console.warn(`[Teltonika TCP] Unrecognized IMEI handshake payload from ${clientAddr} (ASCII: ${data.toString('ascii').trim()})`);
-            // Do not immediately destroy socket; allow device to re-send or stream data
+            console.warn(`⚠️ [Teltonika TCP] Unrecognized IMEI handshake payload from ${clientAddr}`);
             return;
           }
         }
 
         // If direct AVL packet arrives without previous IMEI handshake, fallback to default Teltonika device or last known session
         if (!authenticatedDevice && isDirectAvl) {
-          console.log(`[Teltonika TCP] Direct AVL packet received without IMEI handshake from ${clientAddr}. Resolving default Teltonika device.`);
+          console.log(`ℹ️ [Teltonika TCP] Direct AVL packet received without IMEI handshake from ${clientAddr}. Resolving default Teltonika device.`);
           authenticatedDevice = await deviceService.resolveOrCreateDevice('356450080000000');
         }
 
@@ -65,19 +72,22 @@ export function createTeltonikaTcpServer(ioServer: SocketServer): net.Server {
         } else if (codecId === 0x10) {
           packet = decodeCodec16(data);
         } else {
-          console.warn(`[Teltonika TCP] Unknown Codec ID 0x${codecId.toString(16)} from IMEI ${authenticatedDevice.imei}`);
+          console.warn(`⚠️ [Teltonika TCP] Unknown Codec ID 0x${codecId.toString(16)} from IMEI ${authenticatedDevice.imei}`);
           return;
         }
 
         if (!packet || !packet.crcValid) {
-          console.warn(`[Teltonika TCP] Corrupted packet or invalid CRC from IMEI ${authenticatedDevice.imei}`);
+          console.warn(`⚠️ [Teltonika TCP] Corrupted packet or invalid CRC from IMEI ${authenticatedDevice.imei}`);
           return;
         }
 
-        console.log(`[Teltonika TCP] Codec 0x${codecId.toString(16)} packet decoded from ${authenticatedDevice.name}: ${packet.recordCount} records`);
+        console.log(`🎯 [Teltonika TCP] Codec 0x${codecId.toString(16)} packet decoded from ${authenticatedDevice.name}: ${packet.recordCount} records`);
 
         // 3. Normalization & Persistence Pipeline
         for (const record of packet.records) {
+          console.log(`📊 [RAW AVL RECORD] Timestamp: ${new Date(record.timestampMs).toISOString()} | Priority: ${record.priority} | Event IO: ${record.eventIoId} | Lat: ${record.latitude.toFixed(6)}, Lng: ${record.longitude.toFixed(6)} | Speed: ${record.speed} km/h`);
+          console.log(`🔌 [RAW IO ELEMENTS]:`, JSON.stringify(record.ioElements, (key, value) => typeof value === 'bigint' ? value.toString() : value));
+
           const normalized = normalizeTelemetryRecord(record);
           await telemetryService.processTelemetry(authenticatedDevice, normalized, ioServer);
         }
@@ -86,6 +96,7 @@ export function createTeltonikaTcpServer(ioServer: SocketServer): net.Server {
         const ackResponse = Buffer.alloc(4);
         ackResponse.writeUInt32BE(packet.recordCount, 0);
         socket.write(ackResponse);
+        console.log(`📤 [TELTONIKA ACK] Sent 4-byte record count ACK (${packet.recordCount}) to device`);
 
       } catch (err: any) {
         console.error(`[Teltonika TCP] Error processing packet from ${clientAddr}:`, err.message);
