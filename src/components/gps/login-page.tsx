@@ -65,32 +65,33 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-slate-950 overflow-hidden p-4">
-      {/* Background Wallpaper Image with Ambient Overlay */}
+      {/* Full-bleed Background Wallpaper Image */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-85"
         style={{ backgroundImage: "url('/images/login_back.png')" }}
       />
-      <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-slate-950/80 to-slate-950/50 backdrop-brightness-90" />
+      {/* Transparent Dark Ambient Layer */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-slate-950/90 via-slate-950/50 to-blue-950/30 backdrop-brightness-95" />
 
-      {/* Decorative ambient glow Orbs */}
-      <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-emerald-500/15 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-40 -right-40 h-[28rem] w-[28rem] rounded-full bg-teal-500/15 blur-3xl" />
+      {/* Decorative Electric Glow Orbs */}
+      <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-blue-600/20 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-40 -right-40 h-[28rem] w-[28rem] rounded-full bg-cyan-500/20 blur-3xl" />
 
-      {/* Glassmorphism Card */}
-      <div className="relative z-10 w-full max-w-md rounded-3xl border border-emerald-500/20 bg-slate-950/70 p-8 shadow-2xl shadow-emerald-950/80 backdrop-blur-2xl sm:p-10 transition-all">
+      {/* Transparent Electric Blue Glassmorphism Card */}
+      <div className="relative z-10 w-full max-w-md rounded-3xl border border-blue-500/30 bg-slate-950/40 p-8 shadow-2xl shadow-blue-950/80 backdrop-blur-2xl sm:p-10 transition-all ring-1 ring-blue-500/20">
         {/* Header */}
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-emerald-500/10 p-2.5 border border-emerald-500/30 shadow-lg shadow-emerald-500/20 backdrop-blur-md ring-1 ring-white/10">
+          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-blue-500/10 p-2.5 border border-blue-400/30 shadow-lg shadow-blue-500/20 backdrop-blur-md ring-1 ring-cyan-400/20">
             <img src="/images/truck_loc_icon.png" alt="GPS Tracker Logo" className="h-14 w-14 object-contain drop-shadow-md" />
           </div>
           <h1 className="text-2xl font-extrabold text-white tracking-wide drop-shadow-md">Ikutin Aja</h1>
-          <p className="mt-1 text-xs font-medium text-emerald-400/80 tracking-wide uppercase">Platform Pelacakan Real-time</p>
+          <p className="mt-1 text-xs font-semibold text-cyan-400 tracking-wider uppercase">Platform Pelacakan Real-time</p>
         </div>
 
         {/* Form */}
         <form onSubmit={onSubmit} className="space-y-5">
           <div className="space-y-2">
-            <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+            <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-blue-200/90">
               Email
             </label>
             <Input
@@ -99,13 +100,13 @@ export default function LoginPage() {
               placeholder="Masukkan email anda"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-11 rounded-xl border-white/10 bg-slate-900/80 text-white placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:border-emerald-500/50 transition-all"
+              className="h-11 rounded-xl border-blue-500/20 bg-slate-950/50 text-white placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:border-blue-400 transition-all"
               autoComplete="email"
             />
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+            <label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-blue-200/90">
               Password
             </label>
             <div className="relative">
@@ -115,13 +116,13 @@ export default function LoginPage() {
                 placeholder="Masukkan password anda"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-11 rounded-xl border-white/10 bg-slate-900/80 pr-10 text-white placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:border-emerald-500/50 transition-all"
+                className="h-11 rounded-xl border-blue-500/20 bg-slate-950/50 pr-10 text-white placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:border-blue-400 transition-all"
                 autoComplete="current-password"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-400 focus:outline-none transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 focus:outline-none transition-colors"
                 aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
               >
                 {showPassword ? (
@@ -136,7 +137,7 @@ export default function LoginPage() {
           <Button
             type="submit"
             disabled={isLoading}
-            className="h-11 w-full rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 font-semibold text-white shadow-lg shadow-emerald-950/60 hover:from-emerald-500 hover:to-teal-500 hover:shadow-emerald-500/30 active:scale-[0.99] disabled:opacity-50 transition-all"
+            className="h-11 w-full rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500 font-semibold text-white shadow-lg shadow-blue-950/80 hover:from-blue-500 hover:to-cyan-400 hover:shadow-cyan-500/40 active:scale-[0.99] disabled:opacity-50 transition-all"
           >
             {isLoading ? (
               <span className="flex items-center gap-2">
@@ -154,9 +155,9 @@ export default function LoginPage() {
 
         {/* Divider */}
         <div className="my-6 flex items-center gap-3">
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-          <span className="text-[11px] font-medium uppercase tracking-wider text-emerald-400/70">Akun Demo</span>
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent" />
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-cyan-300">Akun Demo</span>
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent" />
         </div>
 
         {/* Quick login buttons */}
@@ -167,17 +168,17 @@ export default function LoginPage() {
               variant="outline"
               disabled={isLoading}
               onClick={() => onQuickLogin(account.email)}
-              className="h-10 w-full justify-between rounded-xl border-emerald-500/20 bg-slate-900/60 px-4 text-xs font-medium text-slate-300 hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-300 disabled:opacity-50 transition-all"
+              className="h-10 w-full justify-between rounded-xl border-blue-500/20 bg-slate-950/40 px-4 text-xs font-medium text-blue-100/90 hover:border-cyan-400/50 hover:bg-blue-500/15 hover:text-cyan-200 disabled:opacity-50 transition-all"
             >
               <span>{account.label}</span>
-              <span className="text-[11px] text-slate-500">{account.email}</span>
+              <span className="text-[11px] text-cyan-400/70">{account.email}</span>
             </Button>
           ))}
         </div>
       </div>
 
       {/* Footer */}
-      <footer className="absolute bottom-4 left-0 right-0 text-center text-xs text-slate-500/80 font-medium">
+      <footer className="absolute bottom-4 left-0 right-0 text-center text-xs text-blue-200/60 font-medium">
         Ikutin Aja — Platform Pelacakan Real-time v1.0
       </footer>
     </div>
