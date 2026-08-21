@@ -42,10 +42,26 @@ export function calculateTeltonikaCRC16(buffer: Buffer): number {
 
 /**
  * Parses IMEI Handshake payload
+ * Supports both standard 2-byte length prefixed IMEI and direct ASCII IMEI strings
  */
 export function parseImeiHandshake(buffer: Buffer): string | null {
-  if (buffer.length < 2) return null;
+  if (buffer.length < 10) return null;
+
+  // Format 1: Standard Teltonika 2-byte length prefix
   const length = buffer.readUInt16BE(0);
-  if (buffer.length < 2 + length) return null;
-  return buffer.toString('ascii', 2, 2 + length).trim();
+  if (length >= 10 && length <= 18 && buffer.length >= 2 + length) {
+    const imei = buffer.toString('ascii', 2, 2 + length).trim();
+    if (/^\d{10,18}$/.test(imei)) {
+      return imei;
+    }
+  }
+
+  // Format 2: Direct ASCII IMEI string fallback
+  const directStr = buffer.toString('ascii').trim();
+  const match = directStr.match(/\d{10,18}/);
+  if (match) {
+    return match[0];
+  }
+
+  return null;
 }
