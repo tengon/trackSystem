@@ -36,10 +36,11 @@ ENV DATABASE_URL="postgresql://postgres:postgres@postgres:5432/tracker?schema=pu
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy built standalone assets, Prisma, scripts and entrypoint
+# Copy built standalone assets, node_modules, Prisma, scripts and entrypoint
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/src ./src
