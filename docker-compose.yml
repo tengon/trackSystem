@@ -53,10 +53,12 @@ services:
     container_name: tracking-teltonika-gateway
     ports:
       - "5027:5027"
+      - "5028:5028/udp"
       - "3002:3002"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/tracker?schema=public
       - TELTONIKA_TCP_PORT=5027
+      - TELTONIKA_UDP_PORT=5028
       - PORT=3002
     depends_on:
       postgres:
