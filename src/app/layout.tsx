@@ -18,7 +18,9 @@ export const metadata: Metadata = {
   description: "Platform GPS tracking real-time untuk memantau kendaraan, orang, hewan, dan aset Anda secara langsung.",
   keywords: ["GPS", "Tracker", "Pelacakan", "Real-time", "Kendaraan", "Monitoring"],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/images/loc_pin_icon.png",
+    shortcut: "/images/loc_pin_icon.png",
+    apple: "/images/loc_pin_icon.png",
   },
 };
 

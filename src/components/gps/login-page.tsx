@@ -64,20 +64,26 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 overflow-hidden p-4">
+    <div className="relative min-h-screen flex items-center justify-center bg-slate-950 overflow-hidden p-4">
+      {/* Background Wallpaper Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-luminosity scale-105"
+        style={{ backgroundImage: "url('/images/login_back.png')" }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-900/40" />
+
       {/* Decorative blurred circles */}
       <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-emerald-500/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-[28rem] w-[28rem] rounded-full bg-teal-500/15 blur-3xl" />
-      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
 
       {/* Glassmorphism card */}
-      <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl sm:p-10">
+      <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-slate-900/60 p-8 shadow-2xl backdrop-blur-2xl sm:p-10">
         {/* Header */}
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-600/20">
-            <Satellite className="h-8 w-8 text-emerald-400" />
+          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-emerald-500/10 p-2 border border-emerald-500/20 shadow-lg shadow-emerald-500/10 backdrop-blur-md">
+            <img src="/images/truck_loc_icon.png" alt="GPS Tracker Logo" className="h-16 w-16 object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-white">GPS Tracker</h1>
+          <h1 className="text-2xl font-bold text-white tracking-wide">GPS Tracker</h1>
           <p className="mt-1 text-sm text-slate-400">Platform Pelacakan Real-time</p>
         </div>
 

@@ -271,8 +271,8 @@ export default function GPSTrackerPage() {
               </button>
             )}
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <Satellite className="w-4.5 h-4.5 text-primary-foreground" />
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center p-1 shadow-sm overflow-hidden">
+                <img src="/images/truck_loc_icon.png" alt="Logo" className="w-full h-full object-contain" />
               </div>
               <div>
                 <h1 className="text-sm font-bold leading-tight">GPS Tracker</h1>
