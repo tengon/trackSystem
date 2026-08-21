@@ -64,9 +64,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-slate-950 overflow-hidden p-4">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden p-4">
       {/* Background Wallpaper Image */}
-      <div 
+      <div
         className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-luminosity scale-105"
         style={{ backgroundImage: "url('/images/login_back.png')" }}
       />
