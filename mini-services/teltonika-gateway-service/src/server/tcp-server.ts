@@ -21,8 +21,13 @@ export function createTeltonikaTcpServer(ioServer: SocketServer): net.Server {
 
     socket.on('data', async (data: Buffer) => {
       try {
+        console.log(`[Teltonika TCP] Received ${data.length} bytes from ${clientAddr}: ${data.toString('hex')}`);
+
+        // Check if direct AVL Data Packet (Preamble: 4 zero bytes 0x00000000)
+        const isDirectAvl = data.length >= 15 && data.readUInt32BE(0) === 0;
+
         // 1. Handshake Phase: IMEI Authentication
-        if (!authenticatedDevice) {
+        if (!authenticatedDevice && !isDirectAvl) {
           const imei = parseImeiHandshake(data);
           if (imei && imei.length >= 10 && imei.length <= 18) {
             authenticatedDevice = await deviceService.resolveOrCreateDevice(imei);
@@ -32,12 +37,19 @@ export function createTeltonikaTcpServer(ioServer: SocketServer): net.Server {
             socket.write(Buffer.from([0x01]));
             return;
           } else {
-            console.warn(`[Teltonika TCP] Invalid IMEI handshake from ${clientAddr}`);
-            socket.write(Buffer.from([0x00]));
-            socket.destroy();
+            console.warn(`[Teltonika TCP] Unrecognized IMEI handshake payload from ${clientAddr} (ASCII: ${data.toString('ascii').trim()})`);
+            // Do not immediately destroy socket; allow device to re-send or stream data
             return;
           }
         }
+
+        // If direct AVL packet arrives without previous IMEI handshake, fallback to default Teltonika device or last known session
+        if (!authenticatedDevice && isDirectAvl) {
+          console.log(`[Teltonika TCP] Direct AVL packet received without IMEI handshake from ${clientAddr}. Resolving default Teltonika device.`);
+          authenticatedDevice = await deviceService.resolveOrCreateDevice('356450080000000');
+        }
+
+        if (!authenticatedDevice) return;
 
         // 2. Data Phase: Codec Detection & Decoding
         if (data.length < 15) return;
