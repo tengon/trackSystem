@@ -14,8 +14,10 @@ import { telemetryService } from '../services/telemetry.service';
 
 export function createTeltonikaTcpServer(ioServer: SocketServer): net.Server {
   return net.createServer((socket) => {
+    socket.setKeepAlive(true, 10000);
     const clientAddr = `${socket.remoteAddress}:${socket.remotePort}`;
-    console.log(`[Teltonika TCP] New device connection from ${clientAddr}`);
+    const connectedAt = Date.now();
+    console.log(`🔌 [Teltonika TCP] New device connection opened from ${clientAddr}`);
 
     let authenticatedDevice: ResolvedDevice | null = null;
 
@@ -108,7 +110,8 @@ export function createTeltonikaTcpServer(ioServer: SocketServer): net.Server {
     });
 
     socket.on('close', () => {
-      console.log(`[Teltonika TCP] Connection closed (${clientAddr})`);
+      const durationSec = ((Date.now() - connectedAt) / 1000).toFixed(1);
+      console.log(`❌ [Teltonika TCP] Connection closed (${clientAddr}) after ${durationSec}s`);
     });
   });
 }
