@@ -46,5 +46,22 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  teltonika-gateway:
+    build:
+      context: ./mini-services/teltonika-gateway-service
+      dockerfile: Dockerfile
+    container_name: tracking-teltonika-gateway
+    ports:
+      - "5027:5027"
+      - "3002:3002"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/tracker?schema=public
+      - TELTONIKA_TCP_PORT=5027
+      - PORT=3002
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:

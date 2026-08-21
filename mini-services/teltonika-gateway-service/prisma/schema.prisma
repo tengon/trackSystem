@@ -1,0 +1,114 @@
+// Teltonika Gateway Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String   @default("")
+  role      String   @default("user")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  devices Device[]
+}
+
+model Fleet {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#22c55e")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  devices Device[]
+}
+
+model Device {
+  id            String   @id @default(cuid())
+  name          String
+  type          String   @default("vehicle")
+  status        String   @default("offline")
+  iconColor     String   @default("#22c55e")
+  lastLatitude  Float?
+  lastLongitude Float?
+  lastSpeed     Float    @default(0)
+  lastHeading   Float    @default(0)
+  batteryLevel  Int      @default(100)
+  phoneNumber   String?
+  imei          String?
+  notes         String?
+  userId        String?
+  fleetId       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user      User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  fleet     Fleet?           @relation(fields: [fleetId], references: [id], onDelete: SetNull)
+  locations LocationRecord[]
+  geofences Geofence[]
+  alerts    Alert[]
+
+  @@index([userId])
+  @@index([fleetId])
+}
+
+model LocationRecord {
+  id           String   @id @default(cuid())
+  deviceId     String
+  latitude     Float
+  longitude    Float
+  speed        Float    @default(0)
+  heading      Float    @default(0)
+  altitude     Float    @default(0)
+  batteryLevel Int      @default(100)
+  accuracy     Float    @default(0)
+  timestamp    DateTime @default(now())
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId])
+  @@index([timestamp])
+}
+
+model Geofence {
+  id        String   @id @default(cuid())
+  name      String
+  deviceId  String
+  latitude  Float
+  longitude Float
+  radius    Float    @default(500)
+  type      String   @default("both")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  device Device  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  alerts Alert[]
+
+  @@index([deviceId])
+}
+
+model Alert {
+  id         String   @id @default(cuid())
+  deviceId   String
+  geofenceId String?
+  type       String
+  message    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  device   Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  geofence Geofence? @relation(fields: [geofenceId], references: [id], onDelete: SetNull)
+
+  @@index([deviceId])
+  @@index([read])
+  @@index([createdAt])
+}

@@ -1,0 +1,19 @@
+{
+  "name": "teltonika-gateway-service",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx tsx watch index.ts",
+    "start": "npx tsx index.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.11.1",
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "prisma": "^6.11.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
