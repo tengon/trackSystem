@@ -5,7 +5,7 @@ COPY package.json package-lock.json* bun.lock* ./
 COPY prisma ./prisma/
 
 RUN npm install
-RUN npx prisma generate
+RUN ./node_modules/.bin/prisma generate
 
 COPY . .
 
@@ -14,4 +14,4 @@ ENV PORT=3001
 
 EXPOSE 3001
 
-CMD ["npx", "tsx", "index.ts"]
+CMD ["./node_modules/.bin/tsx", "index.ts"]
