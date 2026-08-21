@@ -140,10 +140,15 @@ interface GPSStore {
 }
 
 export const useGPSStore = create<GPSStore>((set) => ({
-  // Auth
-  isAuthenticated: false,
+  // Auth (Temporarily bypassed login page)
+  isAuthenticated: true,
   setIsAuthenticated: (auth) => set({ isAuthenticated: auth }),
-  currentUser: null,
+  currentUser: {
+    id: 'demo-admin-id',
+    name: 'Admin Utama',
+    email: 'admin@gps.com',
+    role: 'super_admin',
+  },
   setCurrentUser: (user) => set({ currentUser: user }),
   logout: () => set({
     isAuthenticated: false,
