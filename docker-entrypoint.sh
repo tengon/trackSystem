@@ -1,10 +1,20 @@
 #!/bin/sh
 set -e
 
+PRISMA_BIN="./node_modules/.bin/prisma"
+if [ ! -f "$PRISMA_BIN" ]; then
+  PRISMA_BIN="npx prisma"
+fi
+
+TSX_BIN="./node_modules/.bin/tsx"
+if [ ! -f "$TSX_BIN" ]; then
+  TSX_BIN="npx tsx"
+fi
+
 echo "Waiting for PostgreSQL database connection and pushing schema..."
 max_retries=10
 count=0
-until ./node_modules/.bin/prisma db push --accept-data-loss; do
+until $PRISMA_BIN db push --accept-data-loss; do
   count=$((count + 1))
   if [ $count -ge $max_retries ]; then
     echo "Failed to connect to database after $max_retries attempts."
@@ -15,7 +25,7 @@ until ./node_modules/.bin/prisma db push --accept-data-loss; do
 done
 
 echo "Seeding initial database data..."
-./node_modules/.bin/tsx scripts/seed-devices.ts || true
+$TSX_BIN scripts/seed-devices.ts || true
 
 echo "Starting Next.js application..."
 exec "$@"
