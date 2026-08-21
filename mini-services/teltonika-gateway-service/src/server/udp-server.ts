@@ -16,6 +16,15 @@ export function createTeltonikaUdpServer(ioServer: SocketServer): dgram.Socket {
 
   udpSocket.on('message', async (msg, rinfo) => {
     try {
+      const hexFormatted = msg.toString('hex').match(/.{1,2}/g)?.join(' ') || msg.toString('hex');
+      const asciiSafe = msg.toString('ascii').replace(/[^\x20-\x7E]/g, '.');
+
+      console.log(`=======================================================`);
+      console.log(`📥 [RAW UDP DATA] (${msg.length} bytes) from ${rinfo.address}:${rinfo.port}`);
+      console.log(`🔷 HEX  : ${hexFormatted}`);
+      console.log(`🔤 ASCII: ${asciiSafe}`);
+      console.log(`=======================================================`);
+
       if (msg.length < 15) return;
 
       // Teltonika UDP header: 2B length, 2B packetId, 1B type, 1B avlId, 2B imeiLen, IMEI string...
