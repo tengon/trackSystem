@@ -28,7 +28,9 @@ function getDeviceIcon(type: string, status: string, color: string, name: string
     asset: '📦',
   };
   const emoji = iconMap[type] || '📍';
-  const statusColor = status === 'online' ? '#22c55e' : status === 'idle' ? '#f59e0b' : '#9ca3af';
+  // Status colors for the device name background
+  const statusBgColor =
+    status === 'online' ? '#16a34a' : status === 'idle' ? '#d97706' : '#64748b';
 
   return L.divIcon({
     className: 'custom-device-marker',
@@ -41,64 +43,55 @@ function getDeviceIcon(type: string, status: string, color: string, name: string
         transform: translate(-50%, -100%);
         user-select: none;
       ">
-        <!-- Vehicle Badge (Clean White Box without big blue circle) -->
+        <!-- 1. Device Name Badge on Top (Background reflects status) -->
         <div style="
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          background: #ffffff;
-          border: 2px solid ${statusColor};
-          border-radius: 8px;
-          padding: 3px 6px;
-          box-shadow: 0 3px 8px rgba(0,0,0,0.25);
-          position: relative;
-        ">
-          <span style="font-size: 20px; line-height: 1;">${emoji}</span>
-          <span style="
-            position: absolute;
-            top: -3px;
-            right: -3px;
-            width: 8px;
-            height: 8px;
-            background: ${statusColor};
-            border-radius: 50%;
-            border: 1.5px solid #ffffff;
-          "></span>
-        </div>
-        <!-- Pin Pointer -->
-        <div style="
-          width: 0;
-          height: 0;
-          border-left: 5px solid transparent;
-          border-right: 5px solid transparent;
-          border-top: 5px solid ${statusColor};
-          margin-top: -1px;
-        "></div>
-        <!-- Device Name Label -->
-        <div style="
-          margin-top: 2px;
-          background: rgba(15, 23, 42, 0.90);
+          background: ${statusBgColor};
           color: #ffffff;
           font-size: 11px;
-          font-weight: 600;
+          font-weight: 700;
           font-family: system-ui, -apple-system, sans-serif;
-          padding: 2px 7px;
-          border-radius: 5px;
+          padding: 2.5px 8px;
+          border-radius: 6px;
           white-space: nowrap;
-          box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-          border: 1px solid rgba(255,255,255,0.25);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+          border: 1px solid rgba(255,255,255,0.4);
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
           letter-spacing: 0.2px;
-          max-width: 140px;
+          max-width: 150px;
           overflow: hidden;
           text-overflow: ellipsis;
+          margin-bottom: 2px;
         ">
-          ${name}
+          <span style="
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #ffffff;
+            display: inline-block;
+            flex-shrink: 0;
+          "></span>
+          <span style="overflow: hidden; text-overflow: ellipsis;">${name}</span>
+        </div>
+
+        <!-- 2. Vehicle Icon Only (No white background circle) -->
+        <div style="
+          font-size: 26px;
+          line-height: 1;
+          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
+          margin-top: 1px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+          ${emoji}
         </div>
       </div>
     `,
     iconSize: [0, 0],
     iconAnchor: [0, 0],
-    popupAnchor: [0, -46],
+    popupAnchor: [0, -50],
   });
 }
 
