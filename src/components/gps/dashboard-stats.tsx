@@ -78,7 +78,7 @@ export default function DashboardStats() {
           >
             <div className="flex items-center gap-2 mb-1.5">
               <div className={`w-7 h-7 rounded-md flex items-center justify-center ${card.bgColor} ${card.color}`}>
-                <Icon className="w-4 h-4" />                
+                <Icon className="w-4 h-4" />
               </div>
               <p className="text-xl font-bold">{value}{card.suffix || ''}</p>
             </div>

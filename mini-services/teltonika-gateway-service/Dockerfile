@@ -11,9 +11,11 @@ COPY . .
 
 ENV DATABASE_URL="postgresql://postgres:postgres@postgres:5432/tracker?schema=public"
 ENV TELTONIKA_TCP_PORT=5027
+ENV TELTONIKA_UDP_PORT=5028
 ENV PORT=3002
 
 EXPOSE 5027
+EXPOSE 5028/udp
 EXPOSE 3002
 
 CMD ["./node_modules/.bin/tsx", "index.ts"]

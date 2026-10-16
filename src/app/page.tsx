@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Monitor, Bell, MapPin, Plus, Radio,
+  Monitor, Bell, MapPin, Plus,
   Menu, X, Satellite, LogOut, User, FileText,
   Truck, Users, Building2, ChevronDown,
 } from 'lucide-react';
@@ -58,7 +58,7 @@ export default function GPSTrackerPage() {
     devices, setDevices, selectedDeviceId, selectDevice, updateDevicePosition,
     stats, setStats, alerts, unreadCount, setAlerts, setLocationHistory,
     geofences, setGeofences, sidebarTab, setSidebarTab,
-    showDeviceDetail, setShowDeviceDetail, simulationEnabled, setSimulationEnabled,
+    showDeviceDetail, setShowDeviceDetail,
     currentUser, logout, isAuthenticated,
     activeNavTab, setActiveNavTab,
   } = useGPSStore();
@@ -103,9 +103,10 @@ export default function GPSTrackerPage() {
   // Connect to WebSocket (only when authenticated)
   useEffect(() => {
     if (!isAuthenticated) return;
-    const socket = io('/?XTransformPort=3004', { transports: ['websocket'] });
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:3002' : '/?XTransformPort=3002');
+    const socket = io(socketUrl, { transports: ['websocket', 'polling'] });
     socketRef.current = socket;
-    socket.on('connect', () => console.log('Connected to GPS tracking service'));
+    socket.on('connect', () => console.log('Connected to Teltonika GPS gateway service'));
     socket.on('initial-positions', (positions: Array<{
       deviceId: string; latitude: number; longitude: number; speed: number; heading: number; batteryLevel: number;
     }>) => {
@@ -118,7 +119,14 @@ export default function GPSTrackerPage() {
       const handler = (window as unknown as Record<string, unknown>).__mapRealtimeHandler as ((updates: unknown[]) => void) | undefined;
       if (handler) handler(updates);
     });
-    socket.on('disconnect', () => console.log('Disconnected from GPS tracking service'));
+    socket.on('location_update', (telemetry: {
+      deviceId: string; latitude: number; longitude: number; speed: number; heading: number; batteryLevel: number;
+    }) => {
+      updateDevicePosition(telemetry);
+      const handler = (window as unknown as Record<string, unknown>).__mapRealtimeHandler as ((updates: unknown[]) => void) | undefined;
+      if (handler) handler([telemetry]);
+    });
+    socket.on('disconnect', () => console.log('Disconnected from Teltonika GPS gateway service'));
     socket.on('connect_error', (error) => console.warn('WebSocket connection error:', error.message));
     return () => { socket.disconnect(); };
   }, [isAuthenticated, updateDevicePosition]);
@@ -153,13 +161,6 @@ export default function GPSTrackerPage() {
   if (!mounted || !isAuthenticated) {
     return <LoginPage />;
   }
-
-  const handleToggleSimulation = () => {
-    const newEnabled = !simulationEnabled;
-    setSimulationEnabled(newEnabled);
-    socketRef.current?.emit('toggle-simulation', { enabled: newEnabled });
-    toast.success(newEnabled ? 'Simulasi GPS diaktifkan' : 'Simulasi GPS dimatikan');
-  };
 
   const handleDeselect = () => { selectDevice(null); setShowDeviceDetail(false); };
   const handleLogout = () => { socketRef.current?.disconnect(); logout(); toast.success('Berhasil keluar'); };
@@ -282,15 +283,13 @@ export default function GPSTrackerPage() {
           </div>
           <div className="flex items-center gap-2">
             {activeNavTab === 'monitor' && (
-              <>
-                <div className="hidden sm:flex items-center gap-1.5 text-[10px]">
-                  <div className={`w-2 h-2 rounded-full ${simulationEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
-                  <span className="text-muted-foreground">{simulationEnabled ? 'Simulasi Aktif' : 'Simulasi Mati'}</span>
-                </div>
-                <Button variant={simulationEnabled ? 'default' : 'outline'} size="sm" className="h-8 text-xs gap-1.5" onClick={handleToggleSimulation}>
-                  <Radio className="w-3.5 h-3.5" /><span className="hidden sm:inline">Simulasi</span>
-                </Button>
-              </>
+              <div className="hidden sm:flex items-center gap-1.5 text-[11px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-md">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="font-semibold">Gateway Live</span>
+              </div>
             )}
             <div className="relative">
               <button onClick={(e) => { e.stopPropagation(); setUserMenuOpen(!userMenuOpen); }} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted transition-colors">

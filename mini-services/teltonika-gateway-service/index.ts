@@ -26,8 +26,36 @@ const ioServer = new SocketServer(httpServer, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
 });
 
-ioServer.on('connection', (socket) => {
+import { PrismaClient } from '@prisma/client';
+
+const db = new PrismaClient();
+
+ioServer.on('connection', async (socket) => {
   console.log('[Teltonika Gateway] Client connected to WebSocket:', socket.id);
+  try {
+    const devices = await db.device.findMany({
+      where: { lastLatitude: { not: null }, lastLongitude: { not: null } },
+      select: {
+        id: true,
+        lastLatitude: true,
+        lastLongitude: true,
+        lastSpeed: true,
+        lastHeading: true,
+        batteryLevel: true,
+      },
+    });
+    const positions = devices.map((d) => ({
+      deviceId: d.id,
+      latitude: d.lastLatitude,
+      longitude: d.lastLongitude,
+      speed: d.lastSpeed,
+      heading: d.lastHeading,
+      batteryLevel: d.batteryLevel,
+    }));
+    socket.emit('initial-positions', positions);
+  } catch (err: any) {
+    console.error('[Teltonika Gateway] Error sending initial positions:', err.message);
+  }
 });
 
 // Initialize TCP & UDP Server Gateways

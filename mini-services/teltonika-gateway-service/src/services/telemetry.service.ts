@@ -91,7 +91,18 @@ export class TelemetryService {
       timestamp: telemetry.timestamp,
     };
 
+    const positionUpdate = {
+      deviceId: device.id,
+      latitude: telemetry.gps.latitude,
+      longitude: telemetry.gps.longitude,
+      speed: telemetry.gps.speed,
+      heading: telemetry.gps.angle,
+      batteryLevel,
+      timestamp: telemetry.timestamp.toISOString(),
+    };
+
     ioServer.emit('location_update', broadcastPayload);
+    ioServer.emit('location-updates', [positionUpdate]);
     ioServer.emit('device_status_change', { deviceId: device.id, status, batteryLevel });
 
     console.log(`[TelemetryService] Telemetry saved for ${updatedDevice.name} (${telemetry.gps.latitude.toFixed(5)}, ${telemetry.gps.longitude.toFixed(5)}) @ ${telemetry.gps.speed} km/h`);

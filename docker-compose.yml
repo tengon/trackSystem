@@ -3,18 +3,28 @@ services:
     image: postgres:16-alpine
     container_name: tracking-postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: tracker
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bitauto123}
+      POSTGRES_DB: ${POSTGRES_DB:-tracker}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d tracker"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-tracker}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:latest
+    container_name: tracking-adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
   app:
@@ -26,21 +36,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/tracker?schema=public
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
-
-  gps-service:
-    build:
-      context: ./mini-services/gps-tracking-service
-      dockerfile: Dockerfile
-    container_name: tracking-gps-service
-    ports:
-      - "3001:3001"
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/tracker?schema=public
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-bitauto123}@postgres:5432/${POSTGRES_DB:-tracker}?schema=public
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,7 +52,7 @@ services:
       - "5028:5028/udp"
       - "3002:3002"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/tracker?schema=public
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-bitauto123}@postgres:5432/${POSTGRES_DB:-tracker}?schema=public
       - TELTONIKA_TCP_PORT=5027
       - TELTONIKA_UDP_PORT=5028
       - PORT=3002
@@ -67,3 +63,4 @@ services:
 
 volumes:
   postgres_data:
+

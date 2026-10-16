@@ -21,7 +21,7 @@ async function seed() {
   console.log('Ensured', allUsers.length, 'users in database');
 
   const existingDeviceCount = await db.device.count();
-  if (existingDeviceCount === 0) {
+  if (existingDeviceCount === 0 && process.env.SEED_DEMO_DEVICES === 'true') {
     const demoDevices = [
       { name: 'Avanza B 1234 XY', type: 'vehicle', iconColor: '#22c55e', status: 'online', lastLatitude: -6.2088, lastLongitude: 106.8456, lastSpeed: 45, batteryLevel: 85 },
       { name: 'Xenia D 5678 AB', type: 'vehicle', iconColor: '#3b82f6', status: 'online', lastLatitude: -6.1850, lastLongitude: 106.8340, lastSpeed: 30, batteryLevel: 72 },
