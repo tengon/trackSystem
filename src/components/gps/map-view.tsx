@@ -177,12 +177,7 @@ export default function MapView() {
     );
 
     if (latlngs.length > 1) {
-      const polyline = L.polyline(latlngs, {
-        color: '#3b82f6',
-        weight: 3,
-        opacity: 0.7,
-        dashArray: '10, 6',
-      }).addTo(map);
+      const polyline = L.polyline(latlngs).addTo(map);
 
       polylinesRef.current.set(selectedDeviceId, polyline);
 
