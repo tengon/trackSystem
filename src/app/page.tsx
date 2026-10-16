@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Monitor, Bell, MapPin, Plus,
   Menu, X, Satellite, LogOut, User, FileText,
-  Truck, Users, Building2, ChevronDown,
+  Truck, Users, Building2, ChevronDown, Radio,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { io, Socket } from 'socket.io-client';
@@ -45,12 +45,17 @@ const FleetManagementPanel = dynamic(() => import('@/components/gps/fleet-manage
   loading: () => <div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>,
 });
 
+const ServerLogsPanel = dynamic(() => import('@/components/gps/server-logs-panel'), {
+  loading: () => <div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>,
+});
+
 const NAV_TABS = [
   { value: 'monitor' as const, label: 'Monitor', icon: Monitor },
   { value: 'report' as const, label: 'Laporan', icon: FileText },
   { value: 'device' as const, label: 'Perangkat', icon: Truck },
-  { value: 'account' as const, label: 'Akun', icon: Users },
   { value: 'fleet' as const, label: 'Armada', icon: Building2 },
+  { value: 'server-logs' as const, label: 'Data Masuk', icon: Radio },
+  { value: 'account' as const, label: 'Akun', icon: Users },
 ];
 
 export default function GPSTrackerPage() {
@@ -271,10 +276,12 @@ export default function GPSTrackerPage() {
         );
       case 'device':
         return <DeviceManagementPanel />;
-      case 'account':
-        return <UserManagementPanel />;
       case 'fleet':
         return <FleetManagementPanel />;
+      case 'server-logs':
+        return <ServerLogsPanel />;
+      case 'account':
+        return <UserManagementPanel />;
       default: return null;
     }
   };

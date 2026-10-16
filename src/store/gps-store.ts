@@ -104,8 +104,8 @@ interface GPSStore {
   logout: () => void;
 
   // Navigation
-  activeNavTab: 'monitor' | 'report' | 'device' | 'account' | 'fleet';
-  setActiveNavTab: (tab: 'monitor' | 'report' | 'device' | 'account' | 'fleet') => void;
+  activeNavTab: 'monitor' | 'report' | 'device' | 'account' | 'fleet' | 'server-logs';
+  setActiveNavTab: (tab: 'monitor' | 'report' | 'device' | 'account' | 'fleet' | 'server-logs') => void;
 
   // Devices
   devices: Device[];
