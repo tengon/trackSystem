@@ -77,14 +77,15 @@ export interface DashboardStats {
   avgSpeed: number;
 }
 
-interface RealtimePosition {
+export interface RealtimePosition {
   deviceId: string;
+  imei?: string;
   latitude: number;
   longitude: number;
   speed: number;
   heading: number;
   batteryLevel: number;
-  timestamp: string;
+  timestamp?: string | Date;
 }
 
 export interface CurrentUser {
@@ -172,7 +173,7 @@ export const useGPSStore = create<GPSStore>((set) => ({
   updateDevicePosition: (update) =>
     set((state) => ({
       devices: state.devices.map((d) =>
-        d.id === update.deviceId
+        d.id === update.deviceId || (update.imei && d.imei === update.imei)
           ? {
               ...d,
               lastLatitude: update.latitude,

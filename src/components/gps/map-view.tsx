@@ -115,20 +115,22 @@ export default function MapView() {
       const icon = getDeviceIcon(device.type, device.status, device.iconColor);
       const position: L.LatLngExpression = [device.lastLatitude, device.lastLongitude];
 
+      const popupContent = `
+        <div style="min-width: 160px; font-family: system-ui;">
+          <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${device.name}</div>
+          <div style="font-size: 12px; color: #666;">Kecepatan: ${Math.round(device.lastSpeed)} km/h</div>
+          <div style="font-size: 12px; color: #666;">Baterai: ${device.batteryLevel}%</div>
+          <div style="font-size: 12px; color: #666;">Status: ${device.status}</div>
+        </div>
+      `;
+
       if (markersRef.current.has(device.id)) {
         const marker = markersRef.current.get(device.id)!;
         marker.setLatLng(position);
         marker.setIcon(icon);
+        marker.setPopupContent(popupContent);
       } else {
         const marker = L.marker(position, { icon }).addTo(map);
-        const popupContent = `
-          <div style="min-width: 160px; font-family: system-ui;">
-            <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${device.name}</div>
-            <div style="font-size: 12px; color: #666;">Kecepatan: ${Math.round(device.lastSpeed)} km/h</div>
-            <div style="font-size: 12px; color: #666;">Baterai: ${device.batteryLevel}%</div>
-            <div style="font-size: 12px; color: #666;">Status: ${device.status}</div>
-          </div>
-        `;
         marker.bindPopup(popupContent);
         marker.on('click', () => selectDevice(device.id));
         markersRef.current.set(device.id, marker);

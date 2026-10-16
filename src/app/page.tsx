@@ -103,10 +103,12 @@ export default function GPSTrackerPage() {
   // Connect to WebSocket (only when authenticated)
   useEffect(() => {
     if (!isAuthenticated) return;
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:3002' : '/?XTransformPort=3002');
-    const socket = io(socketUrl, { transports: ['websocket', 'polling'] });
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || (typeof window !== 'undefined'
+      ? `${window.location.protocol}//${window.location.hostname}:3002`
+      : 'http://localhost:3002');
+    const socket = io(socketUrl, { transports: ['websocket', 'polling'], reconnectionAttempts: 10, reconnectionDelay: 2000 });
     socketRef.current = socket;
-    socket.on('connect', () => console.log('Connected to Teltonika GPS gateway service'));
+    socket.on('connect', () => console.log('Connected to Teltonika GPS gateway service at', socketUrl));
     socket.on('initial-positions', (positions: Array<{
       deviceId: string; latitude: number; longitude: number; speed: number; heading: number; batteryLevel: number;
     }>) => {
@@ -131,6 +133,23 @@ export default function GPSTrackerPage() {
     return () => { socket.disconnect(); };
   }, [isAuthenticated, updateDevicePosition]);
 
+  // Realtime Polling Fallback: Always poll latest device positions every 3 seconds
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/devices');
+        if (res.ok) {
+          const freshDevices = await res.json();
+          setDevices(freshDevices);
+        }
+      } catch {
+        /* silently ignore */
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, setDevices]);
+
   // Fetch location history when a device is selected
   useEffect(() => {
     if (!isAuthenticated || !selectedDeviceId) { if (!selectedDeviceId && isAuthenticated) setLocationHistory([]); return; }
@@ -145,7 +164,7 @@ export default function GPSTrackerPage() {
     if (!isAuthenticated) return;
     const interval = setInterval(async () => {
       try { const res = await fetch('/api/dashboard'); const data = await res.json(); setStats(data); } catch { /* silently */ }
-    }, 15000);
+    }, 10000);
     return () => clearInterval(interval);
   }, [isAuthenticated, setStats]);
 
