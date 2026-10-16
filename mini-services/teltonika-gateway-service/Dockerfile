@@ -9,7 +9,7 @@ RUN ./node_modules/.bin/prisma generate
 
 COPY . .
 
-ENV DATABASE_URL="postgresql://postgres:postgres@postgres:5432/tracker?schema=public"
+ENV DATABASE_URL="postgresql://postgres:bitauto123@postgres:5432/tracker?schema=public"
 ENV TELTONIKA_TCP_PORT=5027
 ENV TELTONIKA_UDP_PORT=5028
 ENV PORT=3002

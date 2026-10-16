@@ -9,7 +9,7 @@ RUN ./node_modules/.bin/prisma generate
 
 COPY . .
 
-ENV DATABASE_URL="postgresql://postgres:postgres@postgres:5432/tracker?schema=public"
+ENV DATABASE_URL="postgresql://postgres:bitauto123@postgres:5432/tracker?schema=public"
 ENV PORT=3001
 
 EXPOSE 3001
