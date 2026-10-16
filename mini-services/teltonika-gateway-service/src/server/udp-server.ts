@@ -22,7 +22,7 @@ export function createTeltonikaUdpServer(ioServer: SocketServer): dgram.Socket {
       console.log(`=======================================================`);
       console.log(`📥 [RAW UDP DATA] (${msg.length} bytes) from ${rinfo.address}:${rinfo.port}`);
       console.log(`🔷 HEX  : ${hexFormatted}`);
-      console.log(`🔤 ASCII: ${asciiSafe}`);
+      //console.log(`🔤 ASCII: ${asciiSafe}`);
       console.log(`=======================================================`);
 
       if (msg.length < 15) return;

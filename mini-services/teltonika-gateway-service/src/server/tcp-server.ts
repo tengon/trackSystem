@@ -29,7 +29,7 @@ export function createTeltonikaTcpServer(ioServer: SocketServer): net.Server {
         console.log(`=======================================================`);
         console.log(`📥 [RAW TCP DATA] (${data.length} bytes) from ${clientAddr}`);
         console.log(`🔷 HEX  : ${hexFormatted}`);
-        console.log(`🔤 ASCII: ${asciiSafe}`);
+        //console.log(`🔤 ASCII: ${asciiSafe}`);
         console.log(`=======================================================`);
 
         // Check if direct AVL Data Packet (Preamble: 4 zero bytes 0x00000000)
@@ -44,10 +44,10 @@ export function createTeltonikaTcpServer(ioServer: SocketServer): net.Server {
 
             // Accept response: 1 byte 0x01
             socket.write(Buffer.from([0x01]));
-            console.log(`📤 [TELTONIKA ACK] Sent 0x01 ACCEPT byte to device`);
+            console.log(`📤 [TELTONIKA ACK] Sent 0x01 ACCEPT byte to device ${clientAddr} : ${imei}`);
             return;
           } else {
-            console.warn(`⚠️ [Teltonika TCP] Unrecognized IMEI handshake payload from ${clientAddr}`);
+            console.warn(`⚠️ [Teltonika TCP] Unrecognized IMEI handshake payload from ${clientAddr} : ${imei}`);
             return;
           }
         }
