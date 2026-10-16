@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { toast } from 'sonner';
 
 const typeIcons: Record<string, React.ReactNode> = {
   vehicle: <Car className="w-3.5 h-3.5" />,
@@ -69,10 +70,18 @@ function DeviceRow({
   onSelect: (id: string) => void;
 }) {
   const status = statusConfig[device.status] || statusConfig.offline;
+  const hasCoordinates = device.lastLatitude !== null && device.lastLongitude !== null;
+
+  const handleClick = () => {
+    onSelect(device.id);
+    if (!hasCoordinates) {
+      toast.info(`Perangkat "${device.name}" belum memiliki koordinat GPS dari satelit.`);
+    }
+  };
 
   return (
     <button
-      onClick={() => onSelect(device.id)}
+      onClick={handleClick}
       className={`w-full text-left py-2 pl-3 pr-2 rounded-md transition-all duration-150 hover:bg-muted/50 cursor-pointer group ${
         isSelected
           ? 'bg-primary/5 border border-primary/20'
@@ -97,10 +106,16 @@ function DeviceRow({
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             <div className={`w-1.5 h-1.5 rounded-full ${status.color}`} />
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[10px] text-muted-foreground truncate">
               {status.label}
-              {device.lastSpeed > 0 ? ` · ${Math.round(device.lastSpeed)} km/h` : ''}
-              {' · '}{device.batteryLevel}%
+              {hasCoordinates ? (
+                <>
+                  {device.lastSpeed > 0 ? ` · ${Math.round(device.lastSpeed)} km/h` : ''}
+                  {' · '}{device.batteryLevel}%
+                </>
+              ) : (
+                <span className="text-amber-500 font-medium"> · Menunggu GPS</span>
+              )}
             </span>
           </div>
         </div>

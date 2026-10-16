@@ -20,7 +20,7 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-function getDeviceIcon(type: string, status: string, color: string): L.DivIcon {
+function getDeviceIcon(type: string, status: string, color: string, name: string): L.DivIcon {
   const iconMap: Record<string, string> = {
     vehicle: '🚗',
     person: '👤',
@@ -28,37 +28,77 @@ function getDeviceIcon(type: string, status: string, color: string): L.DivIcon {
     asset: '📦',
   };
   const emoji = iconMap[type] || '📍';
-  const pulseClass = status === 'online' ? 'animate-pulse' : '';
-  const bgColor = status === 'online' ? color : status === 'idle' ? '#f59e0b' : '#9ca3af';
+  const statusColor = status === 'online' ? '#22c55e' : status === 'idle' ? '#f59e0b' : '#9ca3af';
 
   return L.divIcon({
-    className: 'custom-device-icon',
+    className: 'custom-device-marker',
     html: `
-      <div class="relative ${pulseClass}">
+      <div style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        transform: translate(-50%, -100%);
+        user-select: none;
+      ">
+        <!-- Vehicle Badge (Clean White Box without big blue circle) -->
         <div style="
-          width: 40px; height: 40px;
-          background: ${bgColor};
-          border-radius: 50%;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 18px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          border: 3px solid white;
-          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: #ffffff;
+          border: 2px solid ${statusColor};
+          border-radius: 8px;
+          padding: 3px 6px;
+          box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+          position: relative;
         ">
-          ${emoji}
+          <span style="font-size: 20px; line-height: 1;">${emoji}</span>
+          <span style="
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            width: 8px;
+            height: 8px;
+            background: ${statusColor};
+            border-radius: 50%;
+            border: 1.5px solid #ffffff;
+          "></span>
         </div>
-        ${status === 'online' ? `<div style="
-          position: absolute; bottom: -2px; right: -2px;
-          width: 12px; height: 12px;
-          background: #22c55e;
-          border-radius: 50%;
-          border: 2px solid white;
-        "></div>` : ''}
+        <!-- Pin Pointer -->
+        <div style="
+          width: 0;
+          height: 0;
+          border-left: 5px solid transparent;
+          border-right: 5px solid transparent;
+          border-top: 5px solid ${statusColor};
+          margin-top: -1px;
+        "></div>
+        <!-- Device Name Label -->
+        <div style="
+          margin-top: 2px;
+          background: rgba(15, 23, 42, 0.90);
+          color: #ffffff;
+          font-size: 11px;
+          font-weight: 600;
+          font-family: system-ui, -apple-system, sans-serif;
+          padding: 2px 7px;
+          border-radius: 5px;
+          white-space: nowrap;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+          border: 1px solid rgba(255,255,255,0.25);
+          letter-spacing: 0.2px;
+          max-width: 140px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        ">
+          ${name}
+        </div>
       </div>
     `,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
-    popupAnchor: [0, -24],
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+    popupAnchor: [0, -46],
   });
 }
 
@@ -68,6 +108,7 @@ export default function MapView() {
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const polylinesRef = useRef<Map<string, L.Polyline>>(new Map());
   const geofenceCirclesRef = useRef<Map<string, L.Circle>>(new Map());
+  const initialFitDoneRef = useRef(false);
 
   const devices = useGPSStore((s) => s.devices);
   const selectedDeviceId = useGPSStore((s) => s.selectedDeviceId);
@@ -100,6 +141,31 @@ export default function MapView() {
     };
   }, []);
 
+  // Auto-center or fitBounds on initial load to show all devices that have coordinates
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || initialFitDoneRef.current) return;
+
+    const devicesWithCoords = devices.filter(
+      (d) => d.lastLatitude !== null && d.lastLongitude !== null
+    );
+
+    if (devicesWithCoords.length > 0) {
+      if (devicesWithCoords.length === 1) {
+        map.setView(
+          [devicesWithCoords[0].lastLatitude!, devicesWithCoords[0].lastLongitude!],
+          13
+        );
+      } else {
+        const bounds = L.latLngBounds(
+          devicesWithCoords.map((d) => [d.lastLatitude!, d.lastLongitude!])
+        );
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      }
+      initialFitDoneRef.current = true;
+    }
+  }, [devices]);
+
   // Update markers when devices change
   useEffect(() => {
     const map = mapRef.current;
@@ -112,7 +178,7 @@ export default function MapView() {
 
       currentMarkerIds.add(device.id);
 
-      const icon = getDeviceIcon(device.type, device.status, device.iconColor);
+      const icon = getDeviceIcon(device.type, device.status, device.iconColor, device.name);
       const position: L.LatLngExpression = [device.lastLatitude, device.lastLongitude];
 
       const popupContent = `
@@ -243,7 +309,7 @@ export default function MapView() {
       {/* Map overlay info */}
       <div className="absolute top-3 left-3 z-[1000] bg-background/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-md border">
         <p className="text-xs text-muted-foreground font-medium">
-          🗺️ GPS Tracker — Jakarta Area
+          🗺️ Monitoring Realtime — {devices.filter((d) => d.lastLatitude !== null).length} Perangkat di Peta
         </p>
       </div>
     </div>
