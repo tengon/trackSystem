@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Monitor, Bell, MapPin, Plus,
   Menu, X, Satellite, LogOut, User, FileText,
-  Truck, Users, Building2, ChevronDown, Radio,
+  Truck, Users, Building2, ChevronDown, Radio, Route,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { io, Socket } from 'socket.io-client';
@@ -33,6 +33,15 @@ const MapView = dynamic(() => import('@/components/gps/map-view'), {
   ),
 });
 
+const TripHistoryPanel = dynamic(() => import('@/components/gps/trip-history-panel'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  ),
+});
+
 const UserManagementPanel = dynamic(() => import('@/components/gps/user-management-panel'), {
   loading: () => <div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>,
 });
@@ -51,7 +60,7 @@ const ServerLogsPanel = dynamic(() => import('@/components/gps/server-logs-panel
 
 const NAV_TABS = [
   { value: 'monitor' as const, label: 'Monitor', icon: Monitor },
-  { value: 'report' as const, label: 'Laporan', icon: FileText },
+  { value: 'report' as const, label: 'Riwayat & Perjalanan', icon: Route },
   { value: 'device' as const, label: 'Perangkat', icon: Truck },
   { value: 'fleet' as const, label: 'Armada', icon: Building2 },
   { value: 'server-logs' as const, label: 'Data Masuk', icon: Radio },
@@ -264,16 +273,7 @@ export default function GPSTrackerPage() {
           </div>
         );
       case 'report':
-        return (
-          <div className="flex-1 flex items-center justify-center p-8">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto"><FileText className="w-8 h-8 text-muted-foreground" /></div>
-              <h3 className="text-lg font-semibold">Laporan</h3>
-              <p className="text-sm text-muted-foreground max-w-sm">Modul laporan akan menampilkan riwayat perjalanan, statistik kecepatan, dan laporan geofence.</p>
-              <p className="text-xs text-muted-foreground/60">Segera hadir</p>
-            </div>
-          </div>
-        );
+        return <TripHistoryPanel />;
       case 'device':
         return <DeviceManagementPanel />;
       case 'fleet':

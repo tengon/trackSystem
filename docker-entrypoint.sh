@@ -24,6 +24,9 @@ until $PRISMA_BIN db push --accept-data-loss; do
   sleep 3
 done
 
+echo "Setting up TimescaleDB hypertables..."
+$TSX_BIN scripts/setup-timescaledb.ts || true
+
 echo "Seeding initial database data..."
 $TSX_BIN scripts/seed-devices.ts || true
 

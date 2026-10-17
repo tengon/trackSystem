@@ -62,7 +62,7 @@ model Device {
 }
 
 model LocationRecord {
-  id           String   @id @default(cuid())
+  id           String   @default(cuid())
   deviceId     String
   latitude     Float
   longitude    Float
@@ -75,7 +75,8 @@ model LocationRecord {
 
   device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
 
-  @@index([deviceId])
+  @@id([id, timestamp])
+  @@index([deviceId, timestamp(sort: Desc)])
   @@index([timestamp])
 }
 
