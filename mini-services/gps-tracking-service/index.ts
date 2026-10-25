@@ -214,7 +214,7 @@ io.on('connection', (socket) => {
           lastSpeed: speed || 0,
           lastHeading: heading || 0,
           batteryLevel: batteryLevel || 100,
-          status: speed > 2 ? 'online' : 'idle',
+          status: (speed ?? 0) > 2 ? 'online' : 'idle',
         },
       });
     } catch (err) {

@@ -166,3 +166,37 @@ Stage Summary:
 - Fixed 3 bugs: template literal interpolation, missing padding/scroll, incomplete device loading on expand
 - All panels (device, user, fleet) now have consistent padding and scrolling
 - Lint passes clean
+
+---
+Task ID: 11
+Agent: main
+Task: Tambah pilihan jenis/type/seri perangkat Teltonika pada Perangkat >> Tambah Perangkat & sesuaikan data parsing
+
+Work Log:
+- Added `model String? @default("FMC920")` to `model Device` in `prisma/schema.prisma` and `mini-services/teltonika-gateway-service/prisma/schema.prisma`
+- Applied schema updates to PostgreSQL with `prisma db push` and regenerated Prisma client
+- Created [src/lib/teltonika-models.ts](file:///d:/DEV/Tracking/src/lib/teltonika-models.ts) with complete catalog of Teltonika hardware:
+  - FMC series (4G LTE Cat 1: FMC920, FMC130, FMC125, FMC640, FMC880, FMC003)
+  - FMB series (2G GSM: FMB920, FMB120, FMB125, FMB204, FMB640, FMB003)
+  - FMM series (LTE-M / NB-IoT: FMM920, FMM130, FMM640)
+  - Personal / Worker series (TMT250, GH5200)
+  - Asset series (TAT100, TAT140)
+  - E-Mobility series (TFT100, TST100)
+- Updated [src/components/gps/add-device-dialog.tsx](file:///d:/DEV/Tracking/src/components/gps/add-device-dialog.tsx) and [src/components/gps/device-management-panel.tsx](file:///d:/DEV/Tracking/src/components/gps/device-management-panel.tsx):
+  - Added dropdown selection for Teltonika Device Model/Type/Series grouped by category
+  - Automatically suggests default name, device type (Kendaraan/Orang/Aset), and color
+  - Shows connectivity info (4G LTE, 2G, LTE-M), codec info, BLE 4.0, CAN-bus / OBD, and backup battery tags
+- Updated [src/app/api/devices/route.ts](file:///d:/DEV/Tracking/src/app/api/devices/route.ts) and [src/app/api/devices/[id]/route.ts](file:///d:/DEV/Tracking/src/app/api/devices/[id]/route.ts) to accept and save `model`
+- Updated [src/store/gps-store.ts](file:///d:/DEV/Tracking/src/store/gps-store.ts), [src/components/gps/device-list.tsx](file:///d:/DEV/Tracking/src/components/gps/device-list.tsx), and [src/components/gps/device-detail.tsx](file:///d:/DEV/Tracking/src/components/gps/device-detail.tsx) to display Teltonika model badges
+- Adapted Teltonika data parsing in `mini-services/teltonika-gateway-service`:
+  - `io-element.decoder.ts`: Added variable length (X-byte) IO elements decoding for Codec 8 Extended (0x8E) and Codec 16 (0x10)
+  - `avl-id.mapping.ts`: Expanded AVL IDs (Ignition, Movement, External & Battery Voltage, GSM, GNSS, Odometer, CAN-bus, BLE, Alarms/SOS/Towing/Crash/Unplug)
+  - `telemetry.normalizer.ts`: Accurate calculation of battery voltage (mV to V), backup battery %, movement detection, ignition via DIN1 / alternator, and alarm events
+  - `device.service.ts`: Resolves and persists Teltonika hardware model based on TAC IMEI prefix or manual selection
+  - `telemetry.service.ts`: Triggers dedicated alerts for Teltonika alarms (SOS, towing, unplugged, crash, overspeeding)
+- Verified with unit test decoding both Codec 8 and Codec 8 Extended packets, linting, and typecheck
+
+Stage Summary:
+- Form Tambah Perangkat (di sidebar Monitor dan di tab Perangkat) kini memiliki dropdown pilihan model/seri Teltonika lengkap
+- Data parsing Teltonika mendukung Codec 8, Codec 8 Extended (dengan variable X-byte IO), AVL ID mapping lengkap, dan penanganan alarm perangkat
+

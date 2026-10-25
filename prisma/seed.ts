@@ -39,7 +39,7 @@ async function main() {
   await db.geofence.deleteMany();
   await db.device.deleteMany();
 
-  const allDevices = [];
+  const allDevices: any[] = [];
 
   // Create vehicle devices
   for (const name of vehicleNames) {

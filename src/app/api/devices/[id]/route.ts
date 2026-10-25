@@ -41,10 +41,11 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, type, status, iconColor, phoneNumber, imei, notes, userId } = body;
+    const { name, model, type, status, iconColor, phoneNumber, imei, notes, userId } = body;
 
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
+    if (model !== undefined) updateData.model = model;
     if (type !== undefined) updateData.type = type;
     if (status !== undefined) updateData.status = status;
     if (iconColor !== undefined) updateData.iconColor = iconColor;

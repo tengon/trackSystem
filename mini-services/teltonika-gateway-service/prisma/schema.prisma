@@ -35,6 +35,7 @@ model Fleet {
 model Device {
   id            String   @id @default(cuid())
   name          String
+  model         String?  @default("FMC920")
   type          String   @default("vehicle")
   status        String   @default("offline")
   iconColor     String   @default("#22c55e")

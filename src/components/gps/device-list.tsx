@@ -97,7 +97,12 @@ function DeviceRow({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-1.5">
-            <span className="text-[11px] font-medium truncate">{device.name}</span>
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-[11px] font-medium truncate">{device.name}</span>
+              <span className="text-[9px] font-mono text-primary/80 bg-primary/10 px-1 rounded shrink-0">
+                {device.model || 'FMC920'}
+              </span>
+            </div>
             {(device._count?.alerts ?? 0) > 0 && (
               <Badge variant="destructive" className="h-4 text-[9px] px-1 shrink-0">
                 {device._count?.alerts}
@@ -146,7 +151,12 @@ function UserTreeNode({
 
   const filteredDevices = useMemo(() => {
     return group.devices.filter((d) => {
-      const matchesSearch = !search || d.name.toLowerCase().includes(search.toLowerCase());
+      const q = search.toLowerCase();
+      const matchesSearch =
+        !search ||
+        d.name.toLowerCase().includes(q) ||
+        (d.model && d.model.toLowerCase().includes(q)) ||
+        (d.imei && d.imei.toLowerCase().includes(q));
       const matchesType = filterType === 'all' || d.type === filterType;
       const matchesStatus = filterStatus === 'all' || d.status === filterStatus;
       return matchesSearch && matchesType && matchesStatus;

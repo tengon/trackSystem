@@ -72,7 +72,10 @@ export default function DeviceDetail() {
           </div>
           <div className="min-w-0">
             <h3 className="font-semibold text-sm truncate">{device.name}</h3>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary h-5">
+                Teltonika {device.model || 'FMC920'}
+              </Badge>
               <Badge variant="secondary" className="text-[10px] h-5">
                 {typeLabels[device.type]}
               </Badge>
@@ -150,6 +153,7 @@ export default function DeviceDetail() {
             <div className="space-y-2.5">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Detail Perangkat</h4>
               <div className="space-y-2">
+                <InfoRow label="Model Teltonika" value={`Teltonika ${device.model || 'FMC920'}`} />
                 <InfoRow label="Tipe" value={typeLabels[device.type]} />
                 {device.phoneNumber && <InfoRow label="No. Telepon" value={device.phoneNumber} />}
                 {device.imei && <InfoRow label="IMEI" value={device.imei} />}

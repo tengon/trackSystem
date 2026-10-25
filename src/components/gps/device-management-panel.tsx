@@ -16,7 +16,15 @@ import {
   Wifi,
   WifiOff,
   Clock,
+  Cpu,
+  Radio,
+  ShieldCheck,
 } from 'lucide-react';
+import {
+  TELTONIKA_DEVICE_MODELS,
+  getTeltonikaModel,
+  getTeltonikaModelsGrouped,
+} from '@/lib/teltonika-models';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +69,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface Device {
   id: string;
   name: string;
+  model?: string | null;
   type: string;
   status: string;
   iconColor: string;
@@ -87,6 +96,7 @@ interface UserOption {
 
 interface DeviceFormData {
   name: string;
+  model: string;
   type: string;
   iconColor: string;
   phoneNumber: string;
@@ -98,7 +108,8 @@ interface DeviceFormData {
 const NO_USER = '__none__';
 
 const emptyForm: DeviceFormData = {
-  name: '',
+  name: 'Teltonika FMC920',
+  model: 'FMC920',
   type: 'vehicle',
   iconColor: '#22c55e',
   phoneNumber: '',
@@ -213,6 +224,7 @@ export default function DeviceManagementPanel() {
     setEditingDevice(device);
     setForm({
       name: device.name,
+      model: device.model || 'FMC920',
       type: device.type,
       iconColor: device.iconColor,
       phoneNumber: device.phoneNumber || '',
@@ -372,7 +384,12 @@ export default function DeviceManagementPanel() {
                             {typeIcon}
                           </div>
                           <div>
-                            <p className="font-medium text-sm">{device.name}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="font-medium text-sm">{device.name}</p>
+                              <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary px-1.5 py-0 h-4">
+                                {device.model || 'FMC920'}
+                              </Badge>
+                            </div>
                             {device._count && device._count.alerts > 0 && (
                               <p className="text-[11px] text-destructive">
                                 {device._count.alerts} notifikasi belum dibaca
@@ -449,7 +466,12 @@ export default function DeviceManagementPanel() {
                         {typeIcon}
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{device.name}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-medium text-sm">{device.name}</p>
+                          <Badge variant="outline" className="text-[9px] font-mono border-primary/30 text-primary px-1.5 py-0 h-3.5">
+                            {device.model || 'FMC920'}
+                          </Badge>
+                        </div>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
                           {typeIcon}
                           {typeLabels[device.type] || device.type}
@@ -514,6 +536,93 @@ export default function DeviceManagementPanel() {
           </DialogHeader>
 
           <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
+            {/* Teltonika Hardware Model Dropdown */}
+            {(() => {
+              const selectedModelInfo = getTeltonikaModel(form.model);
+              return (
+                <div className="space-y-1.5 p-3 rounded-lg border bg-muted/20 border-primary/20">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="device-model" className="text-xs font-semibold flex items-center gap-1.5 text-primary">
+                      <Cpu className="w-3.5 h-3.5" />
+                      Jenis / Tipe / Seri Teltonika *
+                    </Label>
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-primary/40 text-primary">
+                      {selectedModelInfo.recommendedCodec}
+                    </Badge>
+                  </div>
+
+                  <Select
+                    value={form.model}
+                    onValueChange={(val) => {
+                      const info = getTeltonikaModel(val);
+                      setForm((f) => {
+                        const isDefaultName =
+                          !f.name ||
+                          f.name === 'Teltonika FMC920' ||
+                          TELTONIKA_DEVICE_MODELS.some((m) => m.fullName === f.name || m.label === f.name);
+
+                        return {
+                          ...f,
+                          model: val,
+                          type: info.defaultType,
+                          iconColor: info.defaultColor,
+                          name: isDefaultName ? info.fullName : f.name,
+                        };
+                      });
+                    }}
+                  >
+                    <SelectTrigger id="device-model" className="h-9 text-xs bg-background">
+                      <SelectValue placeholder="Pilih jenis/seri perangkat Teltonika" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {Object.entries(getTeltonikaModelsGrouped()).map(([cat, models]) => (
+                        <div key={cat} className="py-1">
+                          <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50 rounded-sm mb-1">
+                            {cat}
+                          </div>
+                          {models.map((m) => (
+                            <SelectItem key={m.model} value={m.model} className="text-xs">
+                              <div className="flex items-center justify-between gap-2 w-full">
+                                <span className="font-medium text-foreground">{m.label}</span>
+                                <span className="text-[10px] text-muted-foreground shrink-0">
+                                  {m.connectivity}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </div>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Model details badge strip */}
+                  <div className="pt-1 text-[11px] space-y-1 text-muted-foreground">
+                    <p className="line-clamp-2 leading-tight">{selectedModelInfo.description}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-[9px] font-medium text-foreground">
+                        <Radio className="w-2.5 h-2.5 text-primary" /> {selectedModelInfo.connectivity}
+                      </span>
+                      {selectedModelInfo.hasBle && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-[9px] font-medium text-foreground">
+                          BLE 4.0
+                        </span>
+                      )}
+                      {selectedModelInfo.hasCanbus && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[9px] font-medium">
+                          CAN-bus / OBD
+                        </span>
+                      )}
+                      {selectedModelInfo.backupBattery && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-medium">
+                          <ShieldCheck className="w-2.5 h-2.5" /> Baterai Cadangan
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="space-y-2">
               <Label htmlFor="device-name">Nama Perangkat</Label>
               <Input

@@ -10,6 +10,7 @@ export interface DeviceUser {
 export interface Device {
   id: string;
   name: string;
+  model?: string | null;
   type: string;
   status: string;
   iconColor: string;

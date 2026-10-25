@@ -7,6 +7,7 @@ import { Server as SocketServer } from 'socket.io';
 import { decodeCodec8 } from '../protocol/codec8.decoder';
 import { decodeCodec8Extended } from '../protocol/codec8e.decoder';
 import { decodeCodec16 } from '../protocol/codec16.decoder';
+import { RawTeltonikaPacket } from '../protocol/teltonika.protocol';
 import { normalizeTelemetryRecord } from '../normalizers/telemetry.normalizer';
 import { deviceService } from '../services/device.service';
 import { telemetryService } from '../services/telemetry.service';
@@ -51,7 +52,7 @@ export function createTeltonikaUdpServer(ioServer: SocketServer): dgram.Socket {
 
       // Detect Codec ID at byte 8 of payload
       const codecId = avlPayload.readUInt8(8);
-      let packet = null;
+      let packet: RawTeltonikaPacket | null = null;
 
       if (codecId === 0x08) {
         packet = decodeCodec8(avlPayload);

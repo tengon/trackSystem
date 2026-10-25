@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
         { name: { contains: search } },
         { phoneNumber: { contains: search } },
         { imei: { contains: search } },
+        { model: { contains: search } },
       ];
     }
 
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, type, iconColor, phoneNumber, imei, notes, userId } = body;
+    const { name, model, type, iconColor, phoneNumber, imei, notes, userId } = body;
 
     if (!name) {
       return NextResponse.json({ error: 'Device name is required' }, { status: 400 });
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
     const device = await db.device.create({
       data: {
         name,
+        model: model || 'FMC920',
         type: type || 'vehicle',
         iconColor: iconColor || '#22c55e',
         phoneNumber: phoneNumber || null,

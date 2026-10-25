@@ -192,13 +192,33 @@ export function decodeTeltonikaPacket(buffer: Buffer): TeltonikaPacket | null {
       ioElements[id] = val;
     }
 
+    // X-Byte (Variable Length) IOs (Codec 8 Extended 0x8E & Codec 16)
+    if (isExtended && offset + 2 <= buffer.length) {
+      const countXB = buffer.readUInt16BE(offset);
+      offset += 2;
+      for (let i = 0; i < countXB && offset + 4 <= buffer.length; i++) {
+        const id = buffer.readUInt16BE(offset);
+        offset += 2;
+        const length = buffer.readUInt16BE(offset);
+        offset += 2;
+        if (offset + length <= buffer.length) {
+          const rawBytes = buffer.subarray(offset, offset + length);
+          if (length === 1) ioElements[id] = rawBytes.readUInt8(0);
+          else if (length === 2) ioElements[id] = rawBytes.readUInt16BE(0);
+          else if (length === 4) ioElements[id] = rawBytes.readUInt32BE(0);
+          else if (length === 8) ioElements[id] = rawBytes.readBigInt64BE(0);
+          offset += length;
+        }
+      }
+    }
+
     // Derived Telemetry Extraction
     // DIN1 (Ignition) -> IO 239 in Codec 8, or 1 in standard Teltonika DIN
-    const ignition = ioElements[239] === 1 || ioElements[1] === 1;
+    const extVoltageRaw = Number(ioElements[66] ?? 0);
+    const ignition = ioElements[239] === 1 || ioElements[1] === 1 || (extVoltageRaw >= 13200 && extVoltageRaw <= 32000);
     // Movement -> IO 240
     const movement = ioElements[240] === 1 || speed > 2;
     // External Battery Voltage (mV -> V) -> IO 66
-    const extVoltageRaw = Number(ioElements[66] ?? 0);
     const batteryVoltage = extVoltageRaw > 0 ? extVoltageRaw / 1000 : undefined;
     // Internal Battery % -> IO 113 or derived from 67 (Backup battery mV)
     const backupVoltageRaw = Number(ioElements[67] ?? 0);

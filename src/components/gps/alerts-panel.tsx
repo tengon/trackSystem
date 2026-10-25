@@ -38,7 +38,7 @@ export default function AlertsPanel() {
   };
 
   const markAllRead = async () => {
-    await fetch(`/api/alerts/${id}/read`, { method: 'POST' });
+    await fetch('/api/alerts/all/read', { method: 'POST' });
     const updated = alerts.map((a) => ({ ...a, read: true }));
     useGPSStore.getState().setAlerts(updated, 0);
   };

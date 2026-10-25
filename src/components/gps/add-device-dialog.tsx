@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -13,8 +14,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useGPSStore } from '@/store/gps-store';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, Cpu, Radio, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  TELTONIKA_DEVICE_MODELS,
+  getTeltonikaModel,
+  getTeltonikaModelsGrouped,
+} from '@/lib/teltonika-models';
 
 const colorOptions = [
   '#22c55e', '#3b82f6', '#f59e0b', '#ef4444',
@@ -36,7 +42,8 @@ export default function AddDeviceDialog() {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [form, setForm] = useState({
-    name: '',
+    name: 'Teltonika FMC920',
+    model: 'FMC920',
     type: 'vehicle',
     iconColor: '#22c55e',
     phoneNumber: '',
@@ -44,6 +51,8 @@ export default function AddDeviceDialog() {
     notes: '',
     userId: '__none__',
   });
+
+  const selectedModel = getTeltonikaModel(form.model);
 
   // Fetch users for the dropdown
   useEffect(() => {
@@ -54,6 +63,24 @@ export default function AddDeviceDialog() {
       })
       .catch(() => {});
   }, []);
+
+  const handleModelChange = (modelId: string) => {
+    const info = getTeltonikaModel(modelId);
+    setForm((prev) => {
+      const isDefaultName =
+        !prev.name ||
+        prev.name === 'Teltonika FMC920' ||
+        TELTONIKA_DEVICE_MODELS.some((m) => m.fullName === prev.name || m.label === prev.name);
+
+      return {
+        ...prev,
+        model: modelId,
+        type: info.defaultType,
+        iconColor: info.defaultColor,
+        name: isDefaultName ? info.fullName : prev.name,
+      };
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +104,7 @@ export default function AddDeviceDialog() {
 
       const newDevice = await res.json();
       setDevices([newDevice, ...devices]);
-      toast.success(`Perangkat "${form.name}" berhasil ditambahkan`);
+      toast.success(`Perangkat Teltonika ${form.model} "${form.name}" berhasil ditambahkan`);
       setSidebarTab('devices');
     } catch {
       toast.error('Gagal menambahkan perangkat');
@@ -85,6 +112,8 @@ export default function AddDeviceDialog() {
       setLoading(false);
     }
   };
+
+  const groupedModels = getTeltonikaModelsGrouped();
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -97,14 +126,80 @@ export default function AddDeviceDialog() {
         >
           <ArrowLeft className="w-4 h-4" />
         </Button>
-        <h3 className="text-sm font-semibold">Tambah Perangkat</h3>
+        <div>
+          <h3 className="text-sm font-semibold">Tambah Perangkat</h3>
+          <p className="text-[10px] text-muted-foreground">Konfigurasi Pelacak GPS Teltonika</p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3 flex-1 overflow-y-auto">
+      <form onSubmit={handleSubmit} className="space-y-3 flex-1 overflow-y-auto pr-1">
+        {/* Teltonika Hardware Model Dropdown */}
+        <div className="space-y-1.5 p-2.5 rounded-lg border bg-muted/20 border-primary/20">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-semibold flex items-center gap-1.5 text-primary">
+              <Cpu className="w-3.5 h-3.5" />
+              Jenis / Tipe / Seri Teltonika *
+            </Label>
+            <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-primary/40 text-primary">
+              {selectedModel.recommendedCodec}
+            </Badge>
+          </div>
+
+          <Select value={form.model} onValueChange={handleModelChange}>
+            <SelectTrigger className="h-8 text-xs bg-background">
+              <SelectValue placeholder="Pilih tipe/seri Teltonika" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {Object.entries(groupedModels).map(([category, models]) => (
+                <div key={category} className="py-1">
+                  <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50 rounded-sm mb-1">
+                    {category}
+                  </div>
+                  {models.map((m) => (
+                    <SelectItem key={m.model} value={m.model} className="text-xs">
+                      <div className="flex items-center justify-between gap-2 w-full">
+                        <span className="font-medium text-foreground">{m.label}</span>
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                          {m.connectivity}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </div>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Model info snippet */}
+          <div className="pt-1 text-[10px] space-y-1 text-muted-foreground">
+            <p className="line-clamp-2 leading-tight">{selectedModel.description}</p>
+            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-[9px] font-medium text-foreground">
+                <Radio className="w-2.5 h-2.5 text-primary" /> {selectedModel.connectivity}
+              </span>
+              {selectedModel.hasBle && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-[9px] font-medium text-foreground">
+                  BLE 4.0
+                </span>
+              )}
+              {selectedModel.hasCanbus && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[9px] font-medium">
+                  CAN-bus / OBD
+                </span>
+              )}
+              {selectedModel.backupBattery && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-medium">
+                  <ShieldCheck className="w-2.5 h-2.5" /> Baterai Cadangan
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-1.5">
           <Label className="text-xs">Nama Perangkat *</Label>
           <Input
-            placeholder="Contoh: Mobil Avanza Hitam"
+            placeholder="Contoh: Teltonika FMC920 Avanza"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             className="h-8 text-xs"
@@ -129,7 +224,7 @@ export default function AddDeviceDialog() {
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">Tipe</Label>
+          <Label className="text-xs">Kategori Objek</Label>
           <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue />
@@ -151,7 +246,7 @@ export default function AddDeviceDialog() {
                 key={color}
                 type="button"
                 className={`w-7 h-7 rounded-full border-2 transition-all ${
-                  form.iconColor === color ? 'border-foreground scale-110' : 'border-transparent'
+                  form.iconColor === color ? 'border-foreground scale-110 ring-2 ring-primary/40' : 'border-transparent'
                 }`}
                 style={{ backgroundColor: color }}
                 onClick={() => setForm({ ...form, iconColor: color })}
@@ -161,7 +256,18 @@ export default function AddDeviceDialog() {
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">No. Telepon</Label>
+          <Label className="text-xs">IMEI Teltonika</Label>
+          <Input
+            placeholder="15 digit nomor IMEI (cth: 35645008...)"
+            value={form.imei}
+            onChange={(e) => setForm({ ...form, imei: e.target.value })}
+            className="h-8 text-xs font-mono"
+            maxLength={18}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs">No. Telepon SIM Card</Label>
           <Input
             placeholder="+6281234567890"
             value={form.phoneNumber}
@@ -171,28 +277,18 @@ export default function AddDeviceDialog() {
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs">IMEI</Label>
-          <Input
-            placeholder="IMEI number"
-            value={form.imei}
-            onChange={(e) => setForm({ ...form, imei: e.target.value })}
-            className="h-8 text-xs"
-          />
-        </div>
-
-        <div className="space-y-1.5">
           <Label className="text-xs">Catatan</Label>
           <Textarea
-            placeholder="Catatan tambahan..."
+            placeholder="Catatan tambahan (pemasangan, nomor polisi, dll)..."
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            className="text-xs min-h-[60px]"
+            className="text-xs min-h-[55px]"
           />
         </div>
 
-        <Button type="submit" className="w-full h-8 text-xs" disabled={loading}>
+        <Button type="submit" className="w-full h-8 text-xs font-medium" disabled={loading}>
           <Plus className="w-3.5 h-3.5 mr-1" />
-          {loading ? 'Menyimpan...' : 'Tambah Perangkat'}
+          {loading ? 'Menyimpan...' : 'Tambah Perangkat Teltonika'}
         </Button>
       </form>
     </div>

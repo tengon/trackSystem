@@ -45,18 +45,27 @@ export class TelemetryService {
         heading: telemetry.gps.angle,
         altitude: telemetry.gps.altitude,
         batteryLevel,
-        accuracy: telemetry.gps.satellites > 0 ? Math.max(5, 30 - telemetry.gps.satellites * 2) : 20,
+        accuracy: telemetry.gps.accuracy,
         timestamp: telemetry.timestamp,
       },
     });
 
-    // Check & Generate Alerts
-    if (telemetry.priority === 2) {
+    // Check & Generate Alerts based on Teltonika priority and alarm events
+    if (telemetry.priority === 2 || telemetry.alarmEvent?.type === 'sos') {
       await db.alert.create({
         data: {
           deviceId: device.id,
           type: 'sos',
-          message: `[TELTONIKA SOS] Tombol Darurat ditekan pada ${updatedDevice.name} (IMEI: ${device.imei})`,
+          message: `[TELTONIKA SOS] Tombol Darurat ditekan pada ${updatedDevice.name} (${device.model || 'Teltonika'}) (IMEI: ${device.imei})`,
+          read: false,
+        },
+      });
+    } else if (telemetry.alarmEvent) {
+      await db.alert.create({
+        data: {
+          deviceId: device.id,
+          type: telemetry.alarmEvent.type,
+          message: `[TELTONIKA EVENT] ${telemetry.alarmEvent.label} pada ${updatedDevice.name} (${device.model || 'Teltonika'})`,
           read: false,
         },
       });
@@ -76,6 +85,7 @@ export class TelemetryService {
       deviceId: device.id,
       imei: device.imei,
       name: updatedDevice.name,
+      model: device.model,
       latitude: telemetry.gps.latitude,
       longitude: telemetry.gps.longitude,
       speed: telemetry.gps.speed,
@@ -105,7 +115,7 @@ export class TelemetryService {
     ioServer.emit('location-updates', [positionUpdate]);
     ioServer.emit('device_status_change', { deviceId: device.id, status, batteryLevel });
 
-    console.log(`[TelemetryService] Telemetry saved for ${updatedDevice.name} (${telemetry.gps.latitude.toFixed(5)}, ${telemetry.gps.longitude.toFixed(5)}) @ ${telemetry.gps.speed} km/h`);
+    console.log(`[TelemetryService] Telemetry saved for ${updatedDevice.name} [${device.model}] (${telemetry.gps.latitude.toFixed(5)}, ${telemetry.gps.longitude.toFixed(5)}) @ ${telemetry.gps.speed} km/h`);
   }
 }
 

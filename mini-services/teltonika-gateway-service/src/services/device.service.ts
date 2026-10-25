@@ -11,6 +11,7 @@ export interface ResolvedDevice {
   id: string;
   name: string;
   imei: string;
+  model: string;
   type: string;
   status: string;
 }
@@ -30,20 +31,22 @@ export class DeviceService {
       where: { imei },
     });
 
+    const profile = detectDeviceFamilyByImei(imei);
+
     if (!device) {
-      const profile = detectDeviceFamilyByImei(imei);
       console.log(`[DeviceService] Auto-registering new ${profile.family} device (IMEI: ${imei})`);
 
       device = await db.device.create({
         data: {
           name: profile.name,
-          type: 'vehicle',
+          model: profile.family,
+          type: profile.defaultType || 'vehicle',
           status: 'online',
           iconColor: profile.defaultIconColor,
           imei,
           batteryLevel: 100,
           notes: `Auto-registered ${profile.family} by Teltonika Gateway`,
-        },
+        } as any,
       });
     }
 
@@ -51,6 +54,7 @@ export class DeviceService {
       id: device.id,
       name: device.name,
       imei: device.imei || imei,
+      model: (device as any).model || profile.family,
       type: device.type,
       status: device.status,
     };
