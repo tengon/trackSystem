@@ -227,9 +227,15 @@ export default function TripHistoryPanel() {
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
+    const dev = devices.find((d) => d.id === currentDeviceId);
+    const initialCenter: [number, number] =
+      dev && dev.lastLatitude && dev.lastLongitude
+        ? [dev.lastLatitude, dev.lastLongitude]
+        : [-6.2088, 106.8456];
+
     const map = L.map(mapContainerRef.current, {
-      center: [-6.2088, 106.8456],
-      zoom: 12,
+      center: initialCenter,
+      zoom: 13,
       zoomControl: false,
     });
 
@@ -242,9 +248,10 @@ export default function TripHistoryPanel() {
 
     mapRef.current = map;
 
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-    }, 200);
+    // Trigger multiple invalidateSize to ensure full map render across layout phases
+    const t1 = setTimeout(() => map.invalidateSize(), 100);
+    const t2 = setTimeout(() => map.invalidateSize(), 300);
+    const t3 = setTimeout(() => map.invalidateSize(), 600);
 
     const resizeObserver = new ResizeObserver(() => {
       map.invalidateSize();
@@ -254,13 +261,15 @@ export default function TripHistoryPanel() {
     }
 
     return () => {
-      clearTimeout(timer);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
       resizeObserver.disconnect();
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [devices.length, currentDeviceId]);
 
   // Update Map Route, Markers, and Bounds when activePoints change
   useEffect(() => {
@@ -491,26 +500,6 @@ export default function TripHistoryPanel() {
     setCurrentIndex(0);
   };
 
-  if (devices.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-6 text-center bg-background">
-        <div className="max-w-md bg-card border rounded-2xl p-8 shadow-sm space-y-3.5">
-          <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
-            <RouteIcon className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-base">Tidak Ada Kendaraan Ditugaskan</h3>
-            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-              Secara default semua perangkat GPS adalah milik <strong>Superuser / Admin</strong>. Riwayat perjalanan dan pergerakan hanya dapat dilihat untuk kendaraan yang ditugaskan ke akun Anda.
-            </p>
-          </div>
-          <div className="text-[11px] text-muted-foreground/80 bg-muted/40 rounded-lg py-2 px-3 border border-dashed">
-            Silakan hubungi Administrator untuk menambahkan tugas / unit kendaraan.
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex-1 flex flex-col h-full bg-background overflow-hidden relative">
@@ -803,9 +792,29 @@ export default function TripHistoryPanel() {
         </div>
 
         {/* Center / Right: Leaflet Map & HUD Playback Control */}
-        <div className="flex-1 flex flex-col relative h-full">
+        <div className="flex-1 relative w-full h-full min-h-[400px]">
           {/* Leaflet Map Container */}
-          <div ref={mapContainerRef} className="w-full h-full z-0" />
+          <div ref={mapContainerRef} className="absolute inset-0 w-full h-full z-0" />
+
+          {/* Notice when no devices assigned */}
+          {devices.length === 0 && (
+            <div className="absolute inset-0 z-[1000] flex items-center justify-center p-4 bg-background/50 backdrop-blur-[2px] pointer-events-none">
+              <div className="max-w-md bg-card/95 border shadow-xl rounded-2xl p-6 text-center pointer-events-auto space-y-3.5">
+                <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+                  <RouteIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base">Tidak Ada Kendaraan Ditugaskan</h3>
+                  <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                    Secara default semua perangkat GPS adalah milik <strong>Superuser / Admin</strong>. Riwayat perjalanan dan pergerakan hanya dapat dilihat untuk kendaraan yang ditugaskan ke akun Anda.
+                  </p>
+                </div>
+                <div className="text-[11px] text-muted-foreground/80 bg-muted/40 rounded-lg py-2 px-3 border border-dashed">
+                  Silakan hubungi Administrator untuk menambahkan tugas / unit kendaraan.
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Map Top Status Pill */}
           <div className="absolute top-3 left-3 z-[1000] bg-background/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md border flex items-center gap-2 text-xs">
