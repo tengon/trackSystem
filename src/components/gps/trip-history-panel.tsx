@@ -328,8 +328,8 @@ export default function TripHistoryPanel() {
     const startIcon = L.divIcon({
       className: 'start-flag-marker',
       html: `
-        <div style="transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center;">
-          <div style="background: #16a34a; color: #fff; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); white-space: nowrap;">
+        <div style="transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; width: max-content;">
+          <div style="display: inline-flex; align-items: center; justify-content: center; background: #16a34a; color: #fff; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); white-space: nowrap; width: max-content;">
             START
           </div>
           <div style="font-size: 20px; line-height: 1;">🟢</div>
@@ -347,8 +347,8 @@ export default function TripHistoryPanel() {
     const endIcon = L.divIcon({
       className: 'end-flag-marker',
       html: `
-        <div style="transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center;">
-          <div style="background: #dc2626; color: #fff; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); white-space: nowrap;">
+        <div style="transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; width: max-content;">
+          <div style="display: inline-flex; align-items: center; justify-content: center; background: #dc2626; color: #fff; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); white-space: nowrap; width: max-content;">
             FINISH
           </div>
           <div style="font-size: 20px; line-height: 1;">🏁</div>
@@ -389,26 +389,53 @@ export default function TripHistoryPanel() {
       });
     }
 
-    // 6. Animated Car Marker
+    // 6. Animated Car Marker with synchronized speed badge
     const carIcon = L.divIcon({
       className: 'animated-car-marker',
       html: `
-        <div id="playback-car" style="transform: translate(-50%, -50%); cursor: pointer; user-select: none;">
-          <div style="
-            background: #1e293b;
+        <div id="playback-car" style="
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          transform: translate(-50%, -50%);
+          cursor: pointer;
+          user-select: none;
+          width: max-content;
+        ">
+          <div id="playback-car-badge" style="
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #0f172a;
             color: #ffffff;
-            font-size: 10px;
+            font-size: 11px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             font-weight: 700;
-            padding: 2px 6px;
-            border-radius: 4px;
-            margin-bottom: 3px;
+            line-height: 1;
+            padding: 3px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
             white-space: nowrap;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            text-align: center;
-          " id="playback-car-badge">
-            ${startPoint.speed} km/h
+            margin-bottom: 4px;
+            width: max-content;
+            box-sizing: border-box;
+          ">
+            ${Math.round(startPoint.speed)} km/h
           </div>
-          <div id="playback-car-icon" style="font-size: 28px; line-height: 1; transform: rotate(${startPoint.heading}deg); transition: transform 0.15s ease-out; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.4));">
+          <div id="playback-car-icon" style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            font-size: 26px;
+            line-height: 1;
+            transform: rotate(${startPoint.heading}deg);
+            transition: transform 0.15s ease-out;
+            filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
+          ">
             🚗
           </div>
         </div>
@@ -502,7 +529,7 @@ export default function TripHistoryPanel() {
 
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background overflow-hidden relative">
+    <div className="flex-1 flex flex-col h-full min-h-0 bg-background overflow-hidden relative">
       {/* 1. Header Filter Bar */}
       <div className="p-3 border-b bg-card/60 backdrop-blur-sm flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div className="flex flex-wrap items-center gap-2.5">
@@ -663,9 +690,9 @@ export default function TripHistoryPanel() {
       )}
 
       {/* 3. Main Body: Split Sidebar & Interactive Map */}
-      <div className="flex-1 flex flex-col md:flex-row relative overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row relative overflow-hidden min-h-0">
         {/* Left Drawer: Trip Segments & Stops */}
-        <div className="w-full md:w-80 border-r bg-background flex flex-col shrink-0 h-64 md:h-full z-10 shadow-sm">
+        <div className="w-full md:w-80 border-r bg-background flex flex-col shrink-0 h-64 md:h-full z-10 shadow-sm min-h-0">
           <Tabs defaultValue="trips" className="flex-1 flex flex-col">
             <div className="p-2 border-b shrink-0">
               <TabsList className="w-full h-8">
@@ -792,7 +819,7 @@ export default function TripHistoryPanel() {
         </div>
 
         {/* Center / Right: Leaflet Map & HUD Playback Control */}
-        <div className="flex-1 relative w-full h-full min-h-[400px]">
+        <div className="flex-1 relative w-full h-full min-h-0">
           {/* Leaflet Map Container */}
           <div ref={mapContainerRef} className="absolute inset-0 w-full h-full z-0" />
 

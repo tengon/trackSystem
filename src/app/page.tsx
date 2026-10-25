@@ -340,7 +340,7 @@ export default function GPSTrackerPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center justify-between px-4 h-14">
@@ -416,8 +416,8 @@ export default function GPSTrackerPage() {
           </nav>
         </div>
       </header>
-      <main className="flex-1 flex flex-col overflow-hidden">{renderContent()}</main>
-      <footer className="border-t py-3 px-4 bg-background mt-auto">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden">{renderContent()}</main>
+      <footer className="border-t py-2 px-4 bg-background shrink-0">
         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
           <div className="flex items-center gap-2"><Satellite className="w-3.5 h-3.5" /><span>GPS Tracker Platform v1.0</span></div>
           <div className="flex items-center gap-3">
