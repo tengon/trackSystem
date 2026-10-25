@@ -20,9 +20,6 @@ import GeofencesPanel from '@/components/gps/geofences-panel';
 import AddDeviceDialog from '@/components/gps/add-device-dialog';
 import DashboardStats from '@/components/gps/dashboard-stats';
 
-const DeviceDetail = dynamic(() => import('@/components/gps/device-detail'), {
-  ssr: false,
-});
 
 const DeviceMapPopup = dynamic(() => import('@/components/gps/device-map-popup'), {
   ssr: false,
@@ -308,10 +305,7 @@ export default function GPSTrackerPage() {
                     </div>
                   </div>
                 ) : (
-                  <>
-                    <MapView />
-                    {showDeviceDetail && selectedDeviceId && <DeviceDetail />}
-                  </>
+                  <MapView />
                 )}
                 {selectedDeviceId && (() => {
                   const selectedDevice = devices.find((d) => d.id === selectedDeviceId);
@@ -319,13 +313,10 @@ export default function GPSTrackerPage() {
                   return (
                     <DeviceMapPopup
                       device={selectedDevice}
-                      isSidebarDetailOpen={showDeviceDetail}
                       onClose={handleDeselect}
-                      onOpenDetail={() => setShowDeviceDetail(true)}
                       onOpenTripHistory={() => {
                         selectDevice(selectedDevice.id);
                         setActiveNavTab('report');
-                        setShowDeviceDetail(false);
                       }}
                     />
                   );

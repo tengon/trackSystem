@@ -170,7 +170,7 @@ export const useGPSStore = create<GPSStore>((set) => ({
   devices: [],
   selectedDeviceId: null,
   setDevices: (devices) => set({ devices }),
-  selectDevice: (id) => set({ selectedDeviceId: id, showDeviceDetail: id !== null }),
+  selectDevice: (id) => set({ selectedDeviceId: id, showDeviceDetail: false }),
   updateDevicePosition: (update) =>
     set((state) => ({
       devices: state.devices.map((d) =>

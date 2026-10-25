@@ -36,17 +36,15 @@ function getDirectionLabel(heading: number): string {
 interface DeviceMapPopupProps {
   device: Device;
   onClose: () => void;
-  onOpenDetail: () => void;
   onOpenTripHistory: () => void;
-  isSidebarDetailOpen?: boolean;
+  onOpenDetail?: () => void;
 }
 
 export default function DeviceMapPopup({
   device,
   onClose,
-  onOpenDetail,
   onOpenTripHistory,
-  isSidebarDetailOpen = false,
+  onOpenDetail,
 }: DeviceMapPopupProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -73,9 +71,7 @@ export default function DeviceMapPopup({
 
   return (
     <div
-      className={`absolute bottom-4 z-[999] transition-all duration-300 w-[340px] sm:w-[360px] max-w-[calc(100vw-2rem)] select-none ${
-        isSidebarDetailOpen ? 'right-4 md:right-[404px]' : 'right-4'
-      }`}
+      className="absolute bottom-4 right-4 z-[999] transition-all duration-300 w-[350px] sm:w-[380px] max-w-[calc(100vw-2rem)] select-none animate-in fade-in slide-in-from-bottom-3 duration-200"
     >
       <div className="bg-background/95 backdrop-blur-md border border-border/80 shadow-2xl rounded-2xl overflow-hidden flex flex-col text-xs transition-all">
         {/* Top Header Card */}
@@ -376,6 +372,14 @@ export default function DeviceMapPopup({
                 <span>Konektivitas:</span>
                 <span className="text-foreground">{modelMeta.connectivity}</span>
               </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-2.5 h-2.5" /> Terakhir Update:
+                </span>
+                <span className="text-foreground font-mono">
+                  {device.updatedAt ? format(new Date(device.updatedAt), 'dd MMM yyyy, HH:mm:ss', { locale: idLocale }) : 'Baru saja'}
+                </span>
+              </div>
             </div>
           </div>
         )}
@@ -384,20 +388,21 @@ export default function DeviceMapPopup({
         <div className="p-2.5 pt-2 bg-muted/30 border-t flex items-center gap-2">
           <Button
             size="sm"
-            variant="outline"
-            className="flex-1 h-8 text-[11px] gap-1.5 font-medium shadow-sm"
+            variant="default"
+            className="flex-1 h-8 text-[11px] gap-1.5 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
             onClick={onOpenTripHistory}
           >
-            <RouteIcon className="w-3.5 h-3.5 text-blue-600" />
-            <span>Rute Riwayat</span>
+            <RouteIcon className="w-3.5 h-3.5" />
+            <span>Riwayat & Rute Perjalanan</span>
           </Button>
 
           <Button
             size="sm"
-            className="flex-1 h-8 text-[11px] gap-1.5 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
-            onClick={onOpenDetail}
+            variant="outline"
+            className="h-8 text-[11px] px-3 font-medium text-muted-foreground hover:text-foreground"
+            onClick={onClose}
           >
-            <span>Panel Detail</span>
+            <span>Tutup</span>
           </Button>
         </div>
       </div>
