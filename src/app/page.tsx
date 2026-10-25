@@ -15,11 +15,14 @@ import { toast } from 'sonner';
 import { io, Socket } from 'socket.io-client';
 import LoginPage from '@/components/gps/login-page';
 import DeviceList from '@/components/gps/device-list';
-import DeviceDetail from '@/components/gps/device-detail';
 import AlertsPanel from '@/components/gps/alerts-panel';
 import GeofencesPanel from '@/components/gps/geofences-panel';
 import AddDeviceDialog from '@/components/gps/add-device-dialog';
 import DashboardStats from '@/components/gps/dashboard-stats';
+
+const DeviceDetail = dynamic(() => import('@/components/gps/device-detail'), {
+  ssr: false,
+});
 
 const MapView = dynamic(() => import('@/components/gps/map-view'), {
   ssr: false,

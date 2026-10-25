@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import L from 'leaflet';
+import type LeafletType from 'leaflet';
+
+let L: typeof import('leaflet') | null = null;
+if (typeof window !== 'undefined') {
+  L = require('leaflet');
+}
 import { useGPSStore } from '@/store/gps-store';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -77,7 +82,7 @@ export default function DeviceDetail() {
 
   // Leaflet Mini Map lifecycle when history tab is active
   useEffect(() => {
-    if (detailTab !== 'history' || !miniMapContainerRef.current) return;
+    if (!L || detailTab !== 'history' || !miniMapContainerRef.current) return;
 
     if (!miniMapRef.current) {
       const map = L.map(miniMapContainerRef.current, {
@@ -370,7 +375,7 @@ export default function DeviceDetail() {
                     <div
                       key={loc.id}
                       onClick={() => {
-                        if (miniMapRef.current) {
+                        if (L && miniMapRef.current) {
                           miniMapRef.current.setView([loc.latitude, loc.longitude], 15, { animate: true });
                           L.popup()
                             .setLatLng([loc.latitude, loc.longitude])
