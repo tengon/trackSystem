@@ -24,6 +24,10 @@ const DeviceDetail = dynamic(() => import('@/components/gps/device-detail'), {
   ssr: false,
 });
 
+const DeviceMapPopup = dynamic(() => import('@/components/gps/device-map-popup'), {
+  ssr: false,
+});
+
 const MapView = dynamic(() => import('@/components/gps/map-view'), {
   ssr: false,
   loading: () => (
@@ -309,27 +313,23 @@ export default function GPSTrackerPage() {
                     {showDeviceDetail && selectedDeviceId && <DeviceDetail />}
                   </>
                 )}
-                {selectedDeviceId && !showDeviceDetail && (
-                  <div className="absolute bottom-4 left-4 z-[1000] bg-background/95 backdrop-blur-sm border rounded-lg px-3 py-2 shadow-md max-w-xs">
-                    {(() => {
-                      const device = devices.find((d) => d.id === selectedDeviceId);
-                      if (!device) return null;
-                      return (
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-xs font-medium truncate max-w-[180px]">{device.name}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {device.lastSpeed > 0 ? `${Math.round(device.lastSpeed)} km/h · ` : ''}
-                              {device.batteryLevel}% baterai
-                            </p>
-                          </div>
-                          <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0" onClick={() => setShowDeviceDetail(true)}>Detail</Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={handleDeselect}><X className="w-3.5 h-3.5" /></Button>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
+                {selectedDeviceId && (() => {
+                  const selectedDevice = devices.find((d) => d.id === selectedDeviceId);
+                  if (!selectedDevice) return null;
+                  return (
+                    <DeviceMapPopup
+                      device={selectedDevice}
+                      isSidebarDetailOpen={showDeviceDetail}
+                      onClose={handleDeselect}
+                      onOpenDetail={() => setShowDeviceDetail(true)}
+                      onOpenTripHistory={() => {
+                        selectDevice(selectedDevice.id);
+                        setActiveNavTab('report');
+                        setShowDeviceDetail(false);
+                      }}
+                    />
+                  );
+                })()}
               </div>
             </div>
           </div>
