@@ -83,27 +83,49 @@ export default function GPSTrackerPage() {
   const [mounted, setMounted] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
+  // Track current user and devices in refs for realtime socket scoping
+  const currentUserRef = useRef(currentUser);
+  currentUserRef.current = currentUser;
+  const devicesRef = useRef(devices);
+  devicesRef.current = devices;
+
   // Client-side mount detection for auth gate
   useEffect(() => { setMounted(true); }, []);
+
+  // Redirect regular user if they are on an admin tab
+  useEffect(() => {
+    if (currentUser?.role === 'user' && !['monitor', 'report'].includes(activeNavTab)) {
+      setActiveNavTab('monitor');
+    }
+  }, [currentUser?.role, activeNavTab, setActiveNavTab]);
 
   // Fetch initial data (only when authenticated)
   useEffect(() => {
     if (!isAuthenticated) return;
     async function fetchData() {
       try {
+        const queryParams = new URLSearchParams();
+        if (currentUser?.id) queryParams.set('currentUserId', currentUser.id);
+        if (currentUser?.role) queryParams.set('currentUserRole', currentUser.role);
+        const qStr = queryParams.toString() ? `?${queryParams.toString()}` : '';
+        const headers: Record<string, string> = {
+          'x-user-id': currentUser?.id || '',
+          'x-user-role': currentUser?.role || '',
+        };
+
         const [devicesRes, statsRes, alertsRes, geofencesRes] = await Promise.all([
-          fetch('/api/devices'),
-          fetch('/api/dashboard'),
-          fetch('/api/alerts?limit=30'),
-          fetch('/api/geofences'),
+          fetch(`/api/devices${qStr}`, { headers }),
+          fetch(`/api/dashboard${qStr}`, { headers }),
+          fetch(`/api/alerts?limit=30${currentUser?.id ? `&currentUserId=${currentUser.id}&currentUserRole=${currentUser?.role || ''}` : ''}`, { headers }),
+          fetch(`/api/geofences${qStr}`, { headers }),
         ]);
         const [devicesData, statsData, alertsData, geofencesData] = await Promise.all([
           devicesRes.json(), statsRes.json(), alertsRes.json(), geofencesRes.json(),
         ]);
-        setDevices(devicesData);
+        setDevices(Array.isArray(devicesData) ? devicesData : []);
         setStats(statsData);
-        setAlerts(alertsData.alerts, alertsData.unreadCount);
-        setGeofences(geofencesData);
+        setAlerts(alertsData.alerts || [], alertsData.unreadCount || 0);
+        setGeofences(Array.isArray(geofencesData) ? geofencesData : []);
       } catch (error) {
         console.error('Failed to fetch data:', error);
         toast.error('Gagal memuat data');
@@ -112,7 +134,7 @@ export default function GPSTrackerPage() {
       }
     }
     fetchData();
-  }, [isAuthenticated, setDevices, setStats, setAlerts, setGeofences]);
+  }, [isAuthenticated, currentUser?.id, currentUser?.role, setDevices, setStats, setAlerts, setGeofences]);
 
   // Connect to WebSocket (only when authenticated)
   useEffect(() => {
@@ -126,43 +148,66 @@ export default function GPSTrackerPage() {
     socket.on('initial-positions', (positions: Array<{
       deviceId: string; latitude: number; longitude: number; speed: number; heading: number; batteryLevel: number;
     }>) => {
-      positions.forEach((pos) => updateDevicePosition(pos));
+      const isUser = currentUserRef.current?.role === 'user';
+      const myDeviceIds = new Set(devicesRef.current.map((d) => d.id));
+      positions.forEach((pos) => {
+        if (!isUser || myDeviceIds.has(pos.deviceId)) {
+          updateDevicePosition(pos);
+        }
+      });
     });
     socket.on('location-updates', (updates: Array<{
       deviceId: string; latitude: number; longitude: number; speed: number; heading: number; batteryLevel: number;
     }>) => {
-      updates.forEach((update) => updateDevicePosition(update));
+      const isUser = currentUserRef.current?.role === 'user';
+      const myDeviceIds = new Set(devicesRef.current.map((d) => d.id));
+      const filtered = isUser ? updates.filter((u) => myDeviceIds.has(u.deviceId)) : updates;
+      filtered.forEach((update) => updateDevicePosition(update));
       const handler = (window as unknown as Record<string, unknown>).__mapRealtimeHandler as ((updates: unknown[]) => void) | undefined;
-      if (handler) handler(updates);
+      if (handler) handler(filtered);
     });
     socket.on('location_update', (telemetry: {
       deviceId: string; latitude: number; longitude: number; speed: number; heading: number; batteryLevel: number;
     }) => {
-      updateDevicePosition(telemetry);
-      const handler = (window as unknown as Record<string, unknown>).__mapRealtimeHandler as ((updates: unknown[]) => void) | undefined;
-      if (handler) handler([telemetry]);
+      const isUser = currentUserRef.current?.role === 'user';
+      const myDeviceIds = new Set(devicesRef.current.map((d) => d.id));
+      if (!isUser || myDeviceIds.has(telemetry.deviceId)) {
+        updateDevicePosition(telemetry);
+        const handler = (window as unknown as Record<string, unknown>).__mapRealtimeHandler as ((updates: unknown[]) => void) | undefined;
+        if (handler) handler([telemetry]);
+      }
     });
     socket.on('disconnect', () => console.log('Disconnected from Teltonika GPS gateway service'));
     socket.on('connect_error', (error) => console.warn('WebSocket connection error:', error.message));
     return () => { socket.disconnect(); };
   }, [isAuthenticated, updateDevicePosition]);
 
-  // Realtime Polling Fallback: Always poll latest device positions every 3 seconds
+  // Realtime Polling Fallback: Always poll latest device positions every 3 seconds with user scoping
   useEffect(() => {
     if (!isAuthenticated) return;
     const interval = setInterval(async () => {
       try {
-        const res = await fetch('/api/devices');
+        const queryParams = new URLSearchParams();
+        if (currentUser?.id) queryParams.set('currentUserId', currentUser.id);
+        if (currentUser?.role) queryParams.set('currentUserRole', currentUser.role);
+        const qStr = queryParams.toString() ? `?${queryParams.toString()}` : '';
+        const headers: Record<string, string> = {
+          'x-user-id': currentUser?.id || '',
+          'x-user-role': currentUser?.role || '',
+        };
+        const res = await fetch(`/api/devices${qStr}`, { headers });
         if (res.ok) {
           const freshDevices = await res.json();
-          setDevices(freshDevices);
+          if (Array.isArray(freshDevices)) {
+            setDevices(freshDevices);
+          }
         }
       } catch {
         /* silently ignore */
       }
     }, 3000);
     return () => clearInterval(interval);
-  }, [isAuthenticated, setDevices]);
+  }, [isAuthenticated, currentUser?.id, currentUser?.role, setDevices]);
 
   // Fetch location history when a device is selected
   useEffect(() => {
@@ -173,14 +218,28 @@ export default function GPSTrackerPage() {
       .catch(console.error);
   }, [selectedDeviceId, isAuthenticated, setLocationHistory]);
 
-  // Refresh dashboard stats periodically
+  // Refresh dashboard stats periodically with user scoping
   useEffect(() => {
     if (!isAuthenticated) return;
     const interval = setInterval(async () => {
-      try { const res = await fetch('/api/dashboard'); const data = await res.json(); setStats(data); } catch { /* silently */ }
+      try {
+        const queryParams = new URLSearchParams();
+        if (currentUser?.id) queryParams.set('currentUserId', currentUser.id);
+        if (currentUser?.role) queryParams.set('currentUserRole', currentUser.role);
+        const qStr = queryParams.toString() ? `?${queryParams.toString()}` : '';
+        const headers: Record<string, string> = {
+          'x-user-id': currentUser?.id || '',
+          'x-user-role': currentUser?.role || '',
+        };
+        const res = await fetch(`/api/dashboard${qStr}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setStats(data);
+        }
+      } catch { /* silently */ }
     }, 10000);
     return () => clearInterval(interval);
-  }, [isAuthenticated, setStats]);
+  }, [isAuthenticated, currentUser?.id, currentUser?.role, setStats]);
 
   // Close user menu on outside click
   useEffect(() => {
@@ -345,7 +404,10 @@ export default function GPSTrackerPage() {
         {/* Top Navigation Tabs */}
         <div className="px-4 border-t">
           <nav className="flex gap-0.5 -mb-px">
-            {NAV_TABS.map((tab) => {
+            {(currentUser?.role === 'user'
+              ? NAV_TABS.filter((tab) => tab.value === 'monitor' || tab.value === 'report')
+              : NAV_TABS
+            ).map((tab) => {
               const Icon = tab.icon;
               const isActive = activeNavTab === tab.value;
               return (
@@ -365,7 +427,12 @@ export default function GPSTrackerPage() {
         <div className="flex items-center justify-between text-[10px] text-muted-foreground">
           <div className="flex items-center gap-2"><Satellite className="w-3.5 h-3.5" /><span>GPS Tracker Platform v1.0</span></div>
           <div className="flex items-center gap-3">
-            <span>{devices.length} perangkat terdaftar</span><span>·</span>
+            {currentUser?.role === 'user' ? (
+              <span>{devices.length} perangkat ditugaskan ke Anda</span>
+            ) : (
+              <span>{devices.length} perangkat terdaftar</span>
+            )}
+            <span>·</span>
             <span>{devices.filter((d) => d.status === 'online').length} sedang aktif</span>
           </div>
         </div>

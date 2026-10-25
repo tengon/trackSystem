@@ -7,6 +7,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const searchParams = request.nextUrl.searchParams;
+    const currentUserId = searchParams.get('currentUserId') || request.headers.get('x-user-id');
+    const currentUserRole = searchParams.get('currentUserRole') || request.headers.get('x-user-role');
+
     const device = await db.device.findUnique({
       where: { id },
       include: {
@@ -27,6 +31,14 @@ export async function GET(
       return NextResponse.json({ error: 'Device not found' }, { status: 404 });
     }
 
+    // Role-based protection: Regular user cannot view device not assigned to them
+    if (currentUserRole === 'user' && device.userId !== currentUserId) {
+      return NextResponse.json(
+        { error: 'Akses ditolak. Perangkat ini bukan milik atau ditugaskan kepada Anda.' },
+        { status: 403 }
+      );
+    }
+
     return NextResponse.json(device);
   } catch (error) {
     console.error('Error fetching device:', error);
@@ -40,6 +52,17 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
+    const searchParams = request.nextUrl.searchParams;
+    const currentUserRole = searchParams.get('currentUserRole') || request.headers.get('x-user-role');
+
+    // Only Superuser or Admin can edit devices
+    if (currentUserRole === 'user') {
+      return NextResponse.json(
+        { error: 'Hanya Superuser atau Admin yang dapat mengubah data perangkat' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { name, model, type, status, iconColor, phoneNumber, imei, notes, userId } = body;
 
@@ -77,6 +100,17 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const searchParams = request.nextUrl.searchParams;
+    const currentUserRole = searchParams.get('currentUserRole') || request.headers.get('x-user-role');
+
+    // Only Superuser or Admin can delete devices
+    if (currentUserRole === 'user') {
+      return NextResponse.json(
+        { error: 'Hanya Superuser atau Admin yang dapat menghapus perangkat' },
+        { status: 403 }
+      );
+    }
+
     await db.device.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {

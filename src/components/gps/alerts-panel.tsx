@@ -30,15 +30,31 @@ const alertColors: Record<string, string> = {
 export default function AlertsPanel() {
   const alerts = useGPSStore((s) => s.alerts);
   const unreadCount = useGPSStore((s) => s.unreadCount);
+  const currentUser = useGPSStore((s) => s.currentUser);
+
+  const getHeaders = () => ({
+    'x-user-id': currentUser?.id || '',
+    'x-user-role': currentUser?.role || '',
+  });
+
+  const getQuery = () => {
+    return currentUser ? `?currentUserId=${currentUser.id}&currentUserRole=${currentUser.role}` : '';
+  };
 
   const markAsRead = async (id: string) => {
-    await fetch(`/api/alerts/${id}/read`, { method: 'PUT' });
+    await fetch(`/api/alerts/${id}/read${getQuery()}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+    });
     const updated = alerts.map((a) => (a.id === id ? { ...a, read: true } : a));
     useGPSStore.getState().setAlerts(updated, Math.max(0, unreadCount - 1));
   };
 
   const markAllRead = async () => {
-    await fetch('/api/alerts/all/read', { method: 'POST' });
+    await fetch(`/api/alerts/all/read${getQuery()}`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
     const updated = alerts.map((a) => ({ ...a, read: true }));
     useGPSStore.getState().setAlerts(updated, 0);
   };

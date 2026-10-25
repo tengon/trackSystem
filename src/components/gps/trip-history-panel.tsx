@@ -21,6 +21,7 @@ import {
   Layers,
   ChevronRight,
   Route as RouteIcon,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -79,11 +80,17 @@ interface TripResponse {
 }
 
 export default function TripHistoryPanel() {
-  const { devices, selectedDeviceId, selectDevice } = useGPSStore();
+  const { devices, selectedDeviceId, selectDevice, currentUser } = useGPSStore();
 
   const [currentDeviceId, setCurrentDeviceId] = useState<string>(
     selectedDeviceId || (devices.length > 0 ? devices[0].id : '')
   );
+
+  useEffect(() => {
+    if ((!currentDeviceId || !devices.some((d) => d.id === currentDeviceId)) && devices.length > 0) {
+      setCurrentDeviceId(devices[0].id);
+    }
+  }, [devices, currentDeviceId]);
 
   // Date filter state
   const [preset, setPreset] = useState<'today' | 'yesterday' | '3days' | '7days' | 'custom'>('today');
@@ -195,6 +202,27 @@ export default function TripHistoryPanel() {
     }
   }, [currentDeviceId, preset, fetchTripData]);
 
+  const [simulating, setSimulating] = useState(false);
+
+  const handleSimulateRoute = async () => {
+    if (!currentDeviceId) return;
+    setSimulating(true);
+    try {
+      const res = await fetch(`/api/devices/${currentDeviceId}/trips/simulate`, {
+        method: 'POST',
+      });
+      if (!res.ok) throw new Error('Gagal membuat rute simulasi');
+      const data = await res.json();
+      toast.success(data.message || 'Berhasil membuat rute perjalanan.');
+      await fetchTripData();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg);
+    } finally {
+      setSimulating(false);
+    }
+  };
+
   // Initialize Leaflet Map
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -214,7 +242,20 @@ export default function TripHistoryPanel() {
 
     mapRef.current = map;
 
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    if (mapContainerRef.current) {
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
     return () => {
+      clearTimeout(timer);
+      resizeObserver.disconnect();
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
       map.remove();
       mapRef.current = null;
@@ -449,6 +490,27 @@ export default function TripHistoryPanel() {
     setIsPlaying(false);
     setCurrentIndex(0);
   };
+
+  if (devices.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-6 text-center bg-background">
+        <div className="max-w-md bg-card border rounded-2xl p-8 shadow-sm space-y-3.5">
+          <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+            <RouteIcon className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-base">Tidak Ada Kendaraan Ditugaskan</h3>
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+              Secara default semua perangkat GPS adalah milik <strong>Superuser / Admin</strong>. Riwayat perjalanan dan pergerakan hanya dapat dilihat untuk kendaraan yang ditugaskan ke akun Anda.
+            </p>
+          </div>
+          <div className="text-[11px] text-muted-foreground/80 bg-muted/40 rounded-lg py-2 px-3 border border-dashed">
+            Silakan hubungi Administrator untuk menambahkan tugas / unit kendaraan.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col h-full bg-background overflow-hidden relative">
@@ -744,6 +806,42 @@ export default function TripHistoryPanel() {
         <div className="flex-1 flex flex-col relative h-full">
           {/* Leaflet Map Container */}
           <div ref={mapContainerRef} className="w-full h-full z-0" />
+
+          {/* Map Top Status Pill */}
+          <div className="absolute top-3 left-3 z-[1000] bg-background/90 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow-md border flex items-center gap-2 text-xs">
+            <RouteIcon className="w-3.5 h-3.5 text-primary" />
+            <span className="font-medium">
+              {activePoints.length > 0
+                ? `Rute: ${activePoints.length} Titik · ${tripData?.totalDistanceKm || 0} km`
+                : 'Peta Riwayat Perjalanan'}
+            </span>
+          </div>
+
+          {/* Empty State Overlay with Simulate Button */}
+          {activePoints.length === 0 && !loading && (
+            <div className="absolute inset-0 z-[500] flex items-center justify-center p-4 bg-background/40 backdrop-blur-[2px] pointer-events-none">
+              <div className="bg-background/95 border shadow-xl rounded-2xl p-6 max-w-sm text-center pointer-events-auto space-y-3">
+                <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center mx-auto">
+                  <RouteIcon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Belum Ada Rute Pada Periode Ini</h3>
+                  <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                    Kendaraan ini belum memiliki rekaman koordinat perjalanan untuk filter tanggal yang dipilih.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="w-full gap-2 text-xs font-medium shadow-sm"
+                  onClick={handleSimulateRoute}
+                  disabled={simulating}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {simulating ? 'Menghasilkan Rute...' : 'Simulasikan Rute Perjalanan'}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Floating Playback Control HUD at the bottom */}
           {activePoints.length > 0 && (

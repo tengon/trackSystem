@@ -9,10 +9,27 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const userId = searchParams.get('userId');
 
+    // Current requesting user context
+    const currentUserId = searchParams.get('currentUserId') || request.headers.get('x-user-id');
+    const currentUserRole = searchParams.get('currentUserRole') || request.headers.get('x-user-role');
+
     const where: Record<string, unknown> = {};
     if (type) where.type = type;
     if (status) where.status = status;
-    if (userId) where.userId = userId;
+
+    // Role-based device visibility:
+    // Regular users can ONLY see devices explicitly assigned to them (userId === currentUserId).
+    // If not assigned any devices, they see empty list.
+    // Superuser & Admin own all devices by default and see all devices.
+    if (currentUserRole === 'user') {
+      if (!currentUserId) {
+        return NextResponse.json([]);
+      }
+      where.userId = currentUserId;
+    } else if (userId) {
+      where.userId = userId;
+    }
+
     if (search) {
       where.OR = [
         { name: { contains: search } },
@@ -44,6 +61,17 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const searchParams = request.nextUrl.searchParams;
+    const currentUserRole = searchParams.get('currentUserRole') || request.headers.get('x-user-role');
+
+    // Only Superuser or Admin can add devices
+    if (currentUserRole === 'user') {
+      return NextResponse.json(
+        { error: 'Hanya Superuser atau Admin yang memiliki hak menambah perangkat' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { name, model, type, iconColor, phoneNumber, imei, notes, userId } = body;
 
@@ -51,6 +79,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Device name is required' }, { status: 400 });
     }
 
+    // By default, if userId is null, device belongs to Superuser / Admin
     const device = await db.device.create({
       data: {
         name,

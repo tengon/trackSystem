@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import {
   MapPin, Search, Car, User, PawPrint, Package,
   Signal, SignalZero, Pause, Battery, Plus, Filter,
-  ChevronRight, ChevronDown, Users, FolderTree,
+  ChevronRight, ChevronDown, Users, FolderTree, ShieldAlert,
 } from 'lucide-react';
 import { useState, useMemo, useCallback } from 'react';
 import {
@@ -220,6 +220,9 @@ export default function DeviceList() {
   const selectedDeviceId = useGPSStore((s) => s.selectedDeviceId);
   const selectDevice = useGPSStore((s) => s.selectDevice);
   const setSidebarTab = useGPSStore((s) => s.setSidebarTab);
+  const currentUser = useGPSStore((s) => s.currentUser);
+
+  const isRegularUser = currentUser?.role === 'user';
 
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
@@ -230,14 +233,23 @@ export default function DeviceList() {
     selectDevice(id);
   }, [selectDevice]);
 
-  // Group devices by user
+  // Group devices by user (filtered for regular users)
   const userGroups = useMemo(() => {
     const groupMap = new Map<string, UserGroup>();
 
-    devices.forEach((device) => {
+    // For regular users, only process devices assigned directly to them
+    const targetDevices = isRegularUser
+      ? devices.filter((d) => d.userId === currentUser?.id)
+      : devices;
+
+    targetDevices.forEach((device) => {
       const uid = device.userId || '__unassigned__';
-      const userName = device.user?.name || 'Tidak Ditugaskan';
-      const userRole = device.user?.role || '';
+      const userName = device.userId
+        ? (device.user?.name || (isRegularUser ? (currentUser?.name || 'Akun Saya') : 'User Terdaftar'))
+        : 'Milik Super Admin / Admin (Belum Ditugaskan)';
+      const userRole = device.userId
+        ? (device.user?.role || (isRegularUser ? 'user' : ''))
+        : 'super_admin';
 
       if (!groupMap.has(uid)) {
         groupMap.set(uid, {
@@ -258,10 +270,14 @@ export default function DeviceList() {
     });
 
     return sorted;
-  }, [devices]);
+  }, [devices, isRegularUser, currentUser?.id, currentUser?.name]);
 
-  const totalDevices = devices.length;
-  const totalOnline = devices.filter((d) => d.status === 'online').length;
+  const totalDevices = isRegularUser
+    ? devices.filter((d) => d.userId === currentUser?.id).length
+    : devices.length;
+  const totalOnline = isRegularUser
+    ? devices.filter((d) => d.userId === currentUser?.id && d.status === 'online').length
+    : devices.filter((d) => d.status === 'online').length;
 
   return (
     <div className="flex flex-col h-full gap-2.5">
@@ -269,21 +285,26 @@ export default function DeviceList() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FolderTree className="w-4 h-4 text-primary" />
-          <h3 className="text-xs font-semibold">Perangkat</h3>
+          <h3 className="text-xs font-semibold">
+            {isRegularUser ? 'Perangkat Saya' : 'Semua Perangkat'}
+          </h3>
           <Badge variant="secondary" className="h-4 text-[9px] px-1.5">
             {totalDevices}
           </Badge>
           <span className="text-[10px] text-emerald-600 font-medium">{totalOnline} aktif</span>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-6 gap-1 text-[10px] px-2"
-          onClick={() => setSidebarTab('add-device')}
-        >
-          <Plus className="w-3 h-3" />
-          Tambah
-        </Button>
+        {/* Only Super Admin & Admin can add new devices */}
+        {!isRegularUser && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 gap-1 text-[10px] px-2"
+            onClick={() => setSidebarTab('add-device')}
+          >
+            <Plus className="w-3 h-3" />
+            Tambah
+          </Button>
+        )}
       </div>
 
       {/* Search */}
@@ -339,9 +360,26 @@ export default function DeviceList() {
       <ScrollArea className="flex-1 -mx-1 px-1">
         <div className="space-y-0.5 pb-2">
           {userGroups.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground text-[11px]">
-              Tidak ada perangkat ditemukan
-            </div>
+            isRegularUser ? (
+              <div className="text-center py-6 px-3 rounded-xl border border-dashed bg-muted/20 my-3 space-y-2.5">
+                <div className="w-9 h-9 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold">Belum Ada Perangkat Ditugaskan</p>
+                  <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
+                    Secara default semua perangkat GPS adalah milik <strong>Superuser / Admin</strong>. Perangkat belum dapat ditampilkan karena belum ada perangkat/tugas yang ditugaskan ke akun Anda.
+                  </p>
+                </div>
+                <div className="pt-1 text-[9px] text-muted-foreground/80 bg-background/50 rounded-lg py-1.5 px-2 border">
+                  Hubungi Administrator untuk penugasan unit.
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground text-[11px]">
+                Tidak ada perangkat ditemukan
+              </div>
+            )
           )}
           {userGroups.map((group) => (
             <UserTreeNode

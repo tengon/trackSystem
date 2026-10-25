@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import L from 'leaflet';
 import { useGPSStore } from '@/store/gps-store';
 import type { RealtimePosition } from '@/store/gps-store';
+import { ShieldAlert, Route as RouteIcon } from 'lucide-react';
 
 const JAKARTA_CENTER: [number, number] = [-6.2088, 106.8456];
 const JAKARTA_ZOOM = 11;
@@ -100,6 +101,7 @@ export default function MapView() {
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const polylinesRef = useRef<Map<string, L.Polyline>>(new Map());
+  const historyMarkersRef = useRef<L.Marker[]>([]);
   const geofenceCirclesRef = useRef<Map<string, L.Circle>>(new Map());
   const initialFitDoneRef = useRef(false);
 
@@ -108,6 +110,8 @@ export default function MapView() {
   const selectDevice = useGPSStore((s) => s.selectDevice);
   const geofences = useGPSStore((s) => s.geofences);
   const locationHistory = useGPSStore((s) => s.locationHistory);
+  const currentUser = useGPSStore((s) => s.currentUser);
+  const setActiveNavTab = useGPSStore((s) => s.setActiveNavTab);
 
   // Initialize map
   useEffect(() => {
@@ -221,9 +225,11 @@ export default function MapView() {
     const map = mapRef.current;
     if (!map) return;
 
-    // Clear existing polylines
+    // Clear existing polylines and markers
     polylinesRef.current.forEach((polyline) => map.removeLayer(polyline));
     polylinesRef.current.clear();
+    historyMarkersRef.current.forEach((marker) => map.removeLayer(marker));
+    historyMarkersRef.current = [];
 
     if (!selectedDeviceId || locationHistory.length === 0) return;
 
@@ -231,17 +237,74 @@ export default function MapView() {
       (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
 
-    const latlngs: L.LatLngExpression[] = sortedHistory.map(
-      (loc) => [loc.latitude, loc.longitude] as L.LatLngExpression
+    const latlngs: [number, number][] = sortedHistory.map(
+      (loc) => [loc.latitude, loc.longitude]
     );
 
     if (latlngs.length > 1) {
-      const polyline = L.polyline(latlngs).addTo(map);
+      // 1. Ambient glow line underneath
+      const glowPolyline = L.polyline(latlngs, {
+        color: '#60a5fa',
+        weight: 8,
+        opacity: 0.35,
+        lineCap: 'round',
+        lineJoin: 'round',
+      }).addTo(map);
 
+      // 2. Core vivid blue polyline
+      const polyline = L.polyline(latlngs, {
+        color: '#2563eb',
+        weight: 4,
+        opacity: 0.9,
+        lineCap: 'round',
+        lineJoin: 'round',
+      }).addTo(map);
+
+      polylinesRef.current.set(selectedDeviceId + '-glow', glowPolyline);
       polylinesRef.current.set(selectedDeviceId, polyline);
 
+      // 3. Start Marker (Green Flag)
+      const startPt = sortedHistory[0];
+      const startIcon = L.divIcon({
+        className: 'main-map-start-flag',
+        html: `
+          <div style="transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center;">
+            <div style="background: #16a34a; color: #fff; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.35); white-space: nowrap;">
+              START
+            </div>
+            <div style="font-size: 18px; line-height: 1;">🟢</div>
+          </div>
+        `,
+        iconSize: [0, 0],
+        iconAnchor: [0, 0],
+      });
+      const startMarker = L.marker([startPt.latitude, startPt.longitude], { icon: startIcon })
+        .addTo(map)
+        .bindPopup(`<b>Titik Awal Rute</b><br/>Waktu: ${new Date(startPt.timestamp).toLocaleTimeString('id-ID')}`);
+      historyMarkersRef.current.push(startMarker);
+
+      // 4. Finish Marker (Red Flag)
+      const endPt = sortedHistory[sortedHistory.length - 1];
+      const endIcon = L.divIcon({
+        className: 'main-map-end-flag',
+        html: `
+          <div style="transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center;">
+            <div style="background: #dc2626; color: #fff; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.35); white-space: nowrap;">
+              FINISH
+            </div>
+            <div style="font-size: 18px; line-height: 1;">🏁</div>
+          </div>
+        `,
+        iconSize: [0, 0],
+        iconAnchor: [0, 0],
+      });
+      const endMarker = L.marker([endPt.latitude, endPt.longitude], { icon: endIcon })
+        .addTo(map)
+        .bindPopup(`<b>Posisi Terkini Rute</b><br/>Waktu: ${new Date(endPt.timestamp).toLocaleTimeString('id-ID')}`);
+      historyMarkersRef.current.push(endMarker);
+
       // Fit bounds to trail
-      map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+      map.fitBounds(polyline.getBounds(), { padding: [60, 60], maxZoom: 16 });
     }
   }, [selectedDeviceId, locationHistory]);
 
@@ -296,6 +359,8 @@ export default function MapView() {
     };
   }, [handleRealtimeUpdate]);
 
+  const isRegularUser = currentUser?.role === 'user';
+
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainerRef} className="w-full h-full" />
@@ -305,6 +370,26 @@ export default function MapView() {
           🗺️ Monitoring Realtime — {devices.filter((d) => d.lastLatitude !== null).length} Perangkat di Peta
         </p>
       </div>
+
+      {/* Notice for regular users with no assigned devices */}
+      {isRegularUser && devices.length === 0 && (
+        <div className="absolute inset-0 z-[1000] flex items-center justify-center p-4 bg-background/40 backdrop-blur-[2px] pointer-events-none">
+          <div className="bg-background/95 border shadow-xl rounded-2xl p-6 max-w-sm text-center pointer-events-auto space-y-3">
+            <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm">Tidak Ada Perangkat Aktif</h3>
+              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                Secara default semua perangkat GPS adalah milik <strong>Superuser / Admin</strong>. Peta pelacakan akan menampilkan kendaraan setelah administrator menugaskan perangkat ke akun Anda.
+              </p>
+            </div>
+            <div className="text-[11px] text-muted-foreground/80 bg-muted/40 rounded-lg py-2 px-3 border border-dashed">
+              Silakan hubungi Administrator untuk menambahkan tugas / unit kendaraan.
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
