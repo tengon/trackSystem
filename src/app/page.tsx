@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Monitor, Bell, MapPin, Plus,
   Menu, X, Satellite, LogOut, User, FileText,
-  Truck, Users, Building2, ChevronDown, Radio, Route,
+  Truck, Users, Building2, ChevronDown, Radio, Route, Navigation, MapPinned,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { io, Socket } from 'socket.io-client';
@@ -19,6 +19,10 @@ import AlertsPanel from '@/components/gps/alerts-panel';
 import GeofencesPanel from '@/components/gps/geofences-panel';
 import AddDeviceDialog from '@/components/gps/add-device-dialog';
 import DashboardStats from '@/components/gps/dashboard-stats';
+
+const MarkersPanel = dynamic(() => import('@/components/gps/markers-panel'), {
+  loading: () => <div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>,
+});
 
 
 const DeviceMapPopup = dynamic(() => import('@/components/gps/device-map-popup'), {
@@ -46,6 +50,15 @@ const TripHistoryPanel = dynamic(() => import('@/components/gps/trip-history-pan
   ),
 });
 
+const RoutePlanningPanel = dynamic(() => import('@/components/gps/route-planning-panel'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  ),
+});
+
 const UserManagementPanel = dynamic(() => import('@/components/gps/user-management-panel'), {
   loading: () => <div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>,
 });
@@ -62,20 +75,28 @@ const ServerLogsPanel = dynamic(() => import('@/components/gps/server-logs-panel
   loading: () => <div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>,
 });
 
-const NAV_TABS = [
-  { value: 'monitor' as const, label: 'Monitor', icon: Monitor },
-  { value: 'report' as const, label: 'Riwayat & Perjalanan', icon: Route },
-  { value: 'device' as const, label: 'Perangkat', icon: Truck },
-  { value: 'fleet' as const, label: 'Armada', icon: Building2 },
-  { value: 'server-logs' as const, label: 'Data Masuk', icon: Radio },
-  { value: 'account' as const, label: 'Akun', icon: Users },
+interface NavTabItem {
+  value: 'monitor' | 'report' | 'route' | 'device' | 'fleet' | 'server-logs' | 'account';
+  label: string;
+  icon: typeof Monitor;
+  iconUrl?: string;
+}
+
+const NAV_TABS: NavTabItem[] = [
+  { value: 'monitor', label: 'Monitor', icon: Monitor, iconUrl: '/icon/monitor.png' },
+  { value: 'report', label: 'Riwayat', icon: Route, iconUrl: '/icon/riwayat.png' },
+  { value: 'route', label: 'Rute', icon: Navigation, iconUrl: '/icon/riwayat.png' },
+  { value: 'device', label: 'Perangkat', icon: Truck, iconUrl: '/icon/perangkat.png' },
+  { value: 'fleet', label: 'Armada', icon: Building2, iconUrl: '/icon/armada.png' },
+  { value: 'server-logs', label: 'Data Masuk', icon: Radio },
+  { value: 'account', label: 'Akun', icon: Users, iconUrl: '/icon/user.png' },
 ];
 
 export default function GPSTrackerPage() {
   const {
     devices, setDevices, selectedDeviceId, selectDevice, updateDevicePosition,
     stats, setStats, alerts, unreadCount, setAlerts, setLocationHistory,
-    geofences, setGeofences, sidebarTab, setSidebarTab,
+    geofences, setGeofences, markers, setMarkers, sidebarTab, setSidebarTab,
     showDeviceDetail, setShowDeviceDetail,
     currentUser, logout, isAuthenticated,
     activeNavTab, setActiveNavTab,
@@ -98,7 +119,7 @@ export default function GPSTrackerPage() {
 
   // Redirect regular user if they are on an admin tab
   useEffect(() => {
-    if (currentUser?.role === 'user' && !['monitor', 'report'].includes(activeNavTab)) {
+    if (currentUser?.role === 'user' && !['monitor', 'report', 'route'].includes(activeNavTab)) {
       setActiveNavTab('monitor');
     }
   }, [currentUser?.role, activeNavTab, setActiveNavTab]);
@@ -117,19 +138,21 @@ export default function GPSTrackerPage() {
           'x-user-role': currentUser?.role || '',
         };
 
-        const [devicesRes, statsRes, alertsRes, geofencesRes] = await Promise.all([
+        const [devicesRes, statsRes, alertsRes, geofencesRes, markersRes] = await Promise.all([
           fetch(`/api/devices${qStr}`, { headers }),
           fetch(`/api/dashboard${qStr}`, { headers }),
           fetch(`/api/alerts?limit=30${currentUser?.id ? `&currentUserId=${currentUser.id}&currentUserRole=${currentUser?.role || ''}` : ''}`, { headers }),
           fetch(`/api/geofences${qStr}`, { headers }),
+          fetch(`/api/markers${qStr}`, { headers }),
         ]);
-        const [devicesData, statsData, alertsData, geofencesData] = await Promise.all([
-          devicesRes.json(), statsRes.json(), alertsRes.json(), geofencesRes.json(),
+        const [devicesData, statsData, alertsData, geofencesData, markersData] = await Promise.all([
+          devicesRes.json(), statsRes.json(), alertsRes.json(), geofencesRes.json(), markersRes.json(),
         ]);
         setDevices(Array.isArray(devicesData) ? devicesData : []);
         setStats(statsData);
         setAlerts(alertsData.alerts || [], alertsData.unreadCount || 0);
         setGeofences(Array.isArray(geofencesData) ? geofencesData : []);
+        setMarkers(Array.isArray(markersData) ? markersData : []);
       } catch (error) {
         console.error('Failed to fetch data:', error);
         toast.error('Gagal memuat data');
@@ -138,7 +161,7 @@ export default function GPSTrackerPage() {
       }
     }
     fetchData();
-  }, [isAuthenticated, currentUser?.id, currentUser?.role, setDevices, setStats, setAlerts, setGeofences]);
+  }, [isAuthenticated, currentUser?.id, currentUser?.role, setDevices, setStats, setAlerts, setGeofences, setMarkers]);
 
   // Connect to WebSocket (only when authenticated)
   useEffect(() => {
@@ -273,16 +296,20 @@ export default function GPSTrackerPage() {
             }`}>
               <div className="p-3 border-b shrink-0">
                 <Tabs value={sidebarTab} onValueChange={(v) => setSidebarTab(v as typeof sidebarTab)}>
-                  <TabsList className="w-full h-8">
-                    <TabsTrigger value="devices" className="flex-1 text-[10px] gap-1 h-7">
-                      <Monitor className="w-3 h-3" /><span className="hidden sm:inline">Perangkat</span>
+                  <TabsList className="w-full h-8 grid grid-cols-4">
+                    <TabsTrigger value="devices" className="text-[10px] gap-1 h-7 px-1">
+                      <img src="/icon/perangkat.png" alt="Perangkat" className="w-3.5 h-3.5 object-contain" />
+                      <span className="hidden sm:inline">Perangkat</span>
                     </TabsTrigger>
-                    <TabsTrigger value="alerts" className="flex-1 text-[10px] gap-1 h-7 relative">
-                      <Bell className="w-3 h-3" /><span className="hidden sm:inline">Notifikasi</span>
+                    <TabsTrigger value="alerts" className="text-[10px] gap-1 h-7 px-1 relative">
+                      <Bell className="w-3 h-3" /><span className="hidden sm:inline">Notif</span>
                       {unreadCount > 0 && <Badge variant="destructive" className="absolute -top-1 -right-1 h-3.5 min-w-3.5 text-[8px] px-1">{unreadCount}</Badge>}
                     </TabsTrigger>
-                    <TabsTrigger value="geofences" className="flex-1 text-[10px] gap-1 h-7">
+                    <TabsTrigger value="geofences" className="text-[10px] gap-1 h-7 px-1">
                       <MapPin className="w-3 h-3" /><span className="hidden sm:inline">Geofence</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="markers" className="text-[10px] gap-1 h-7 px-1">
+                      <MapPinned className="w-3 h-3 text-sky-500" /><span className="hidden sm:inline">Penanda</span>
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
@@ -291,6 +318,7 @@ export default function GPSTrackerPage() {
                 {sidebarTab === 'devices' && <DeviceList />}
                 {sidebarTab === 'alerts' && <AlertsPanel />}
                 {sidebarTab === 'geofences' && <GeofencesPanel />}
+                {sidebarTab === 'markers' && <MarkersPanel />}
                 {sidebarTab === 'add-device' && <AddDeviceDialog />}
               </div>
             </aside>
@@ -327,6 +355,8 @@ export default function GPSTrackerPage() {
         );
       case 'report':
         return <TripHistoryPanel />;
+      case 'route':
+        return <RoutePlanningPanel />;
       case 'device':
         return <DeviceManagementPanel />;
       case 'fleet':
@@ -343,8 +373,9 @@ export default function GPSTrackerPage() {
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center justify-between px-4 h-14">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between px-4 h-14 gap-3">
+          {/* Brand Logo & Title */}
+          <div className="flex items-center gap-3 shrink-0">
             {activeNavTab === 'monitor' && (
               <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden p-1.5 rounded-md hover:bg-muted">
                 {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -360,7 +391,46 @@ export default function GPSTrackerPage() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Navigation Menu (Button Mode) */}
+          <nav className="flex items-center gap-1.5 overflow-x-auto py-1 max-w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {(currentUser?.role === 'user'
+              ? NAV_TABS.filter((tab) => tab.value === 'monitor' || tab.value === 'report' || tab.value === 'route')
+              : NAV_TABS
+            ).map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeNavTab === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  onClick={() => setActiveNavTab(tab.value)}
+                  className={`group shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap border ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground border-primary shadow-xs font-semibold'
+                      : 'bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border-border/40 hover:border-border'
+                  }`}
+                >
+                  {tab.iconUrl ? (
+                    <img
+                      src={tab.iconUrl}
+                      alt={tab.label}
+                      className={`w-5 h-5 object-contain transition-transform duration-200 ${
+                        isActive
+                          ? 'scale-110 drop-shadow-xs'
+                          : 'opacity-80 group-hover:opacity-100 group-hover:scale-105'
+                      }`}
+                    />
+                  ) : (
+                    <Icon className={`w-4 h-4 transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`} />
+                  )}
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+          
+          {/* Right Section: Status & Profile */}
+          <div className="flex items-center gap-2 shrink-0">
             {activeNavTab === 'monitor' && (
               <div className="hidden sm:flex items-center gap-1.5 text-[11px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-md">
                 <span className="relative flex h-2 w-2">
@@ -372,8 +442,8 @@ export default function GPSTrackerPage() {
             )}
             <div className="relative">
               <button onClick={(e) => { e.stopPropagation(); setUserMenuOpen(!userMenuOpen); }} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted transition-colors">
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="w-3.5 h-3.5 text-primary" />
+                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                  <img src="/icon/user.png" alt="User" className="w-6 h-6 object-contain" />
                 </div>
                 <div className="hidden sm:block text-left">
                   <p className="text-xs font-medium leading-tight">{currentUser?.name || 'User'}</p>
@@ -383,9 +453,12 @@ export default function GPSTrackerPage() {
               </button>
               {userMenuOpen && (
                 <div className="absolute right-0 top-full mt-1 w-56 rounded-lg border bg-popover p-1 shadow-lg z-50">
-                  <div className="px-3 py-2 border-b mb-1">
-                    <p className="text-sm font-medium">{currentUser?.name}</p>
-                    <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
+                  <div className="px-3 py-2 border-b mb-1 flex items-center gap-2.5">
+                    <img src="/icon/user.png" alt="User" className="w-8 h-8 object-contain shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium leading-tight">{currentUser?.name}</p>
+                      <p className="text-xs text-muted-foreground leading-tight mt-0.5">{currentUser?.email}</p>
+                    </div>
                   </div>
                   <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md transition-colors cursor-pointer">
                     <LogOut className="w-4 h-4" /> Keluar
@@ -394,26 +467,6 @@ export default function GPSTrackerPage() {
               )}
             </div>
           </div>
-        </div>
-        {/* Top Navigation Tabs */}
-        <div className="px-4 border-t">
-          <nav className="flex gap-0.5 -mb-px">
-            {(currentUser?.role === 'user'
-              ? NAV_TABS.filter((tab) => tab.value === 'monitor' || tab.value === 'report')
-              : NAV_TABS
-            ).map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeNavTab === tab.value;
-              return (
-                <button key={tab.value} onClick={() => setActiveNavTab(tab.value)} className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors cursor-pointer ${
-                  isActive ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
-                }`}>
-                  <Icon className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                </button>
-              );
-            })}
-          </nav>
         </div>
       </header>
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">{renderContent()}</main>

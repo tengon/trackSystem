@@ -55,6 +55,21 @@ export interface Geofence {
   device?: { name: string; type: string };
 }
 
+export interface MapMarkerItem {
+  id: string;
+  name: string;
+  category: string;
+  description: string | null;
+  latitude: number;
+  longitude: number;
+  color: string;
+  icon: string;
+  userId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user?: { id: string; name: string; role: string };
+}
+
 export interface Alert {
   id: string;
   deviceId: string;
@@ -105,8 +120,8 @@ interface GPSStore {
   logout: () => void;
 
   // Navigation
-  activeNavTab: 'monitor' | 'report' | 'device' | 'account' | 'fleet' | 'server-logs';
-  setActiveNavTab: (tab: 'monitor' | 'report' | 'device' | 'account' | 'fleet' | 'server-logs') => void;
+  activeNavTab: 'monitor' | 'report' | 'route' | 'device' | 'account' | 'fleet' | 'server-logs';
+  setActiveNavTab: (tab: 'monitor' | 'report' | 'route' | 'device' | 'account' | 'fleet' | 'server-logs') => void;
 
   // Devices
   devices: Device[];
@@ -132,9 +147,19 @@ interface GPSStore {
   geofences: Geofence[];
   setGeofences: (geofences: Geofence[]) => void;
 
+  // Map Markers
+  markers: MapMarkerItem[];
+  setMarkers: (markers: MapMarkerItem[]) => void;
+  addMarker: (marker: MapMarkerItem) => void;
+  deleteMarker: (id: string) => void;
+
+  // Pending target for routing navigation
+  pendingRouteTarget: { name: string; lat: number; lng: number } | null;
+  setPendingRouteTarget: (target: { name: string; lat: number; lng: number } | null) => void;
+
   // UI state
-  sidebarTab: 'devices' | 'alerts' | 'geofences' | 'add-device';
-  setSidebarTab: (tab: 'devices' | 'alerts' | 'geofences' | 'add-device') => void;
+  sidebarTab: 'devices' | 'alerts' | 'geofences' | 'markers' | 'add-device';
+  setSidebarTab: (tab: 'devices' | 'alerts' | 'geofences' | 'markers' | 'add-device') => void;
   showDeviceDetail: boolean;
   setShowDeviceDetail: (show: boolean) => void;
   simulationEnabled: boolean;
@@ -158,6 +183,8 @@ export const useGPSStore = create<GPSStore>((set) => ({
     unreadCount: 0,
     locationHistory: [],
     geofences: [],
+    markers: [],
+    pendingRouteTarget: null,
     sidebarTab: 'devices',
     showDeviceDetail: false,
   }),
@@ -204,6 +231,16 @@ export const useGPSStore = create<GPSStore>((set) => ({
   // Geofences
   geofences: [],
   setGeofences: (geofences) => set({ geofences }),
+
+  // Map Markers
+  markers: [],
+  setMarkers: (markers) => set({ markers }),
+  addMarker: (marker) => set((state) => ({ markers: [marker, ...state.markers] })),
+  deleteMarker: (id) => set((state) => ({ markers: state.markers.filter((m) => m.id !== id) })),
+
+  // Pending target for routing navigation
+  pendingRouteTarget: null,
+  setPendingRouteTarget: (target) => set({ pendingRouteTarget: target }),
 
   // UI state
   sidebarTab: 'devices',

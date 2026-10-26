@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import L from 'leaflet';
 import { useGPSStore } from '@/store/gps-store';
 import type { RealtimePosition } from '@/store/gps-store';
-import { ShieldAlert, Route as RouteIcon } from 'lucide-react';
+import { ShieldAlert, Route as RouteIcon, MapPin, Plus, Eye, EyeOff, Navigation } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import AddMarkerDialog from '@/components/gps/add-marker-dialog';
 
 const JAKARTA_CENTER: [number, number] = [-6.2088, 106.8456];
 const JAKARTA_ZOOM = 11;
@@ -112,6 +115,38 @@ export default function MapView() {
   const locationHistory = useGPSStore((s) => s.locationHistory);
   const currentUser = useGPSStore((s) => s.currentUser);
   const setActiveNavTab = useGPSStore((s) => s.setActiveNavTab);
+  const markers = useGPSStore((s) => s.markers);
+  const deleteMarker = useGPSStore((s) => s.deleteMarker);
+  const setPendingRouteTarget = useGPSStore((s) => s.setPendingRouteTarget);
+
+  // Map marking mode & custom markers layer state
+  const [isMarkingMode, setIsMarkingMode] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [showMarkers, setShowMarkers] = useState(true);
+  const customMapMarkersRef = useRef<Map<string, L.Marker>>(new Map());
+  const tempPinRef = useRef<L.Marker | null>(null);
+  const isMarkingModeRef = useRef(isMarkingMode);
+  isMarkingModeRef.current = isMarkingMode;
+
+  // Open modal handler
+  const handleOpenMarkerDialog = useCallback((lat: number, lng: number) => {
+    setSelectedCoords({ lat, lng });
+    setDialogOpen(true);
+    if (tempPinRef.current && mapRef.current) {
+      mapRef.current.removeLayer(tempPinRef.current);
+      tempPinRef.current = null;
+    }
+  }, []);
+
+  // Update cursor when marking mode toggles
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const container = mapRef.current.getContainer();
+    if (container) {
+      container.style.cursor = isMarkingMode ? 'crosshair' : '';
+    }
+  }, [isMarkingMode]);
 
   // Initialize map
   useEffect(() => {
@@ -130,13 +165,104 @@ export default function MapView() {
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+    // Click on map: if in marking mode, open dialog directly; otherwise drop temp pin with popup to save
+    map.on('click', (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      if (isMarkingModeRef.current) {
+        setIsMarkingMode(false);
+        handleOpenMarkerDialog(lat, lng);
+        return;
+      }
+
+      // Drop temporary pin
+      if (tempPinRef.current) {
+        map.removeLayer(tempPinRef.current);
+      }
+
+      const tempIcon = L.divIcon({
+        className: 'temp-click-pin',
+        html: `
+          <div style="display:flex; flex-direction:column; align-items:center; transform:translate(-50%, -100%); pointer-events:none;">
+            <div style="background:#0284c7; color:#fff; font-size:9px; font-weight:700; padding:1px 6px; border-radius:10px; white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,0.3); border:1px solid #fff;">
+              Titik Terpilih
+            </div>
+            <div style="font-size:22px; line-height:1; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4));">📍</div>
+          </div>
+        `,
+        iconSize: [0, 0],
+        iconAnchor: [0, 0],
+        popupAnchor: [0, -28],
+      });
+
+      const pin = L.marker([lat, lng], { icon: tempIcon }).addTo(map);
+      tempPinRef.current = pin;
+
+      // Construct popup using direct DOM elements to guarantee 100% reliable click event handling
+      const container = document.createElement('div');
+      container.style.cssText = 'font-family:system-ui; min-width:185px; padding:2px;';
+
+      const titleEl = document.createElement('div');
+      titleEl.style.cssText = 'font-weight:700; font-size:12px; margin-bottom:2px; color:#0f172a;';
+      titleEl.textContent = '📍 Titik di Peta';
+      container.appendChild(titleEl);
+
+      const addrEl = document.createElement('div');
+      addrEl.style.cssText = 'font-size:10px; color:#64748b; margin-bottom:4px; line-height:1.3;';
+      addrEl.textContent = 'Mencari alamat...';
+      container.appendChild(addrEl);
+
+      const coordEl = document.createElement('div');
+      coordEl.style.cssText = 'font-size:9px; color:#94a3b8; font-family:monospace; margin-bottom:8px;';
+      coordEl.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      container.appendChild(coordEl);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.style.cssText = 'width:100%; font-size:11px; color:#ffffff; background:#0284c7; border:none; border-radius:6px; padding:7px 10px; cursor:pointer; font-weight:700; box-shadow:0 1px 3px rgba(0,0,0,0.25); display:flex; align-items:center; justify-content:center; gap:6px; transition:background 0.15s;';
+      btn.innerHTML = '<span>💾</span><span>Tandai &amp; Simpan ke Database</span>';
+      btn.onmouseover = () => { btn.style.background = '#0369a1'; };
+      btn.onmouseout = () => { btn.style.background = '#0284c7'; };
+
+      // Prevent Leaflet map from capturing/swallowing the button click
+      L.DomEvent.disableClickPropagation(btn);
+      L.DomEvent.disableScrollPropagation(btn);
+      L.DomEvent.on(btn, 'click', (ev) => {
+        L.DomEvent.stopPropagation(ev);
+        handleOpenMarkerDialog(lat, lng);
+      });
+
+      container.appendChild(btn);
+
+      pin.bindPopup(container).openPopup();
+
+      // Reverse geocode address for the popup
+      fetch(`/api/geocode?lat=${lat}&lng=${lng}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data && (data.name || data.display_name)) {
+            addrEl.textContent = data.name || data.display_name.split(',')[0];
+          } else {
+            addrEl.textContent = 'Alamat koordinat peta';
+          }
+        })
+        .catch(() => {
+          addrEl.textContent = 'Alamat koordinat peta';
+        });
+    });
+
+    map.on('contextmenu', (e: L.LeafletMouseEvent) => {
+      e.originalEvent.preventDefault();
+      handleOpenMarkerDialog(e.latlng.lat, e.latlng.lng);
+      toast.info('Menandai lokasi pada titik yang diklik...');
+    });
+
     mapRef.current = map;
 
     return () => {
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [handleOpenMarkerDialog]);
 
   // Auto-center or fitBounds on initial load to show all devices that have coordinates
   useEffect(() => {
@@ -359,17 +485,171 @@ export default function MapView() {
     };
   }, [handleRealtimeUpdate]);
 
+
+
+  // Render Saved Database Markers on the Map
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    customMapMarkersRef.current.forEach((marker) => map.removeLayer(marker));
+    customMapMarkersRef.current.clear();
+
+    if (!showMarkers) return;
+
+    markers.forEach((m) => {
+      const markerIcon = L.divIcon({
+        className: 'custom-saved-map-marker',
+        html: `
+          <div style="display:flex; flex-direction:column; align-items:center; transform:translate(-50%, -100%); cursor:pointer;">
+            <div style="background:${m.color}; color:#fff; font-size:10px; font-weight:700; padding:2px 8px; border-radius:12px; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,0.35); border:1px solid #fff; margin-bottom:2px;">
+              ${m.name}
+            </div>
+            <div style="width:30px; height:30px; background:#ffffff; border:3px solid ${m.color}; border-radius:50%; box-shadow:0 3px 10px rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; font-size:16px;">
+              ${m.icon || '📍'}
+            </div>
+          </div>
+        `,
+        iconSize: [0, 0],
+        iconAnchor: [0, 0],
+        popupAnchor: [0, -36],
+      });
+
+      const marker = L.marker([m.latitude, m.longitude], { icon: markerIcon }).addTo(map);
+
+      const popupContainer = document.createElement('div');
+      popupContainer.style.cssText = 'font-family:system-ui; min-width:185px; padding:2px;';
+
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex; align-items:center; gap:6px; margin-bottom:4px;';
+      header.innerHTML = `<span style="font-size:18px;">${m.icon || '📍'}</span><strong style="font-size:13px; color:#0f172a;">${m.name}</strong>`;
+      popupContainer.appendChild(header);
+
+      if (m.description) {
+        const desc = document.createElement('p');
+        desc.style.cssText = 'font-size:11px; color:#475569; margin:2px 0 6px 0; line-height:1.3;';
+        desc.textContent = m.description;
+        popupContainer.appendChild(desc);
+      }
+
+      const coordEl = document.createElement('div');
+      coordEl.style.cssText = 'font-size:10px; color:#94a3b8; font-family:monospace; margin-bottom:8px;';
+      coordEl.textContent = `${m.latitude.toFixed(5)}, ${m.longitude.toFixed(5)}`;
+      popupContainer.appendChild(coordEl);
+
+      const btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex; justify-content:space-between; gap:6px; border-top:1px solid #e2e8f0; padding-top:6px;';
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.style.cssText = 'font-size:11px; color:#ef4444; background:#fef2f2; border:1px solid #fecaca; border-radius:4px; padding:4px 8px; cursor:pointer; font-weight:600;';
+      delBtn.innerHTML = '🗑️ Hapus';
+      L.DomEvent.disableClickPropagation(delBtn);
+      L.DomEvent.disableScrollPropagation(delBtn);
+      L.DomEvent.on(delBtn, 'click', async (ev) => {
+        L.DomEvent.stopPropagation(ev);
+        if (!confirm(`Hapus penanda "${m.name}"?`)) return;
+        try {
+          const res = await fetch(`/api/markers/${m.id}`, { method: 'DELETE' });
+          if (res.ok) {
+            deleteMarker(m.id);
+            toast.success(`Penanda "${m.name}" berhasil dihapus`);
+          }
+        } catch {
+          toast.error('Gagal menghapus penanda');
+        }
+      });
+      btnRow.appendChild(delBtn);
+
+      const routeBtn = document.createElement('button');
+      routeBtn.type = 'button';
+      routeBtn.style.cssText = 'font-size:11px; color:#0284c7; background:#f0f9ff; border:1px solid #bae6fd; border-radius:4px; padding:4px 8px; cursor:pointer; font-weight:600;';
+      routeBtn.innerHTML = '🧭 Buat Rute';
+      L.DomEvent.disableClickPropagation(routeBtn);
+      L.DomEvent.disableScrollPropagation(routeBtn);
+      L.DomEvent.on(routeBtn, 'click', (ev) => {
+        L.DomEvent.stopPropagation(ev);
+        setPendingRouteTarget({ name: m.name, lat: m.latitude, lng: m.longitude });
+        setActiveNavTab('route');
+        toast.info(`Membuka rute ke ${m.name}`);
+      });
+      btnRow.appendChild(routeBtn);
+
+      popupContainer.appendChild(btnRow);
+
+      marker.bindPopup(popupContainer);
+
+      customMapMarkersRef.current.set(m.id, marker);
+    });
+  }, [markers, showMarkers, deleteMarker, setActiveNavTab, setPendingRouteTarget]);
+
   const isRegularUser = currentUser?.role === 'user';
 
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainerRef} className="w-full h-full" />
       {/* Map overlay info */}
-      <div className="absolute top-3 left-3 z-[1000] bg-background/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-md border">
+      <div className="absolute top-3 left-3 z-[400] bg-background/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-md border">
         <p className="text-xs text-muted-foreground font-medium">
           🗺️ Monitoring Realtime — {devices.filter((d) => d.lastLatitude !== null).length} Perangkat di Peta
         </p>
       </div>
+
+      {/* Floating Toolbar: Mark Map & Layer Toggle */}
+      <div className="absolute top-3 right-3 z-[400] flex items-center gap-2">
+        <Button
+          size="sm"
+          variant={isMarkingMode ? 'default' : 'outline'}
+          onClick={() => {
+            setIsMarkingMode(!isMarkingMode);
+            if (!isMarkingMode) {
+              toast.info('Mode Penanda Aktif: Klik pada titik peta mana saja');
+            }
+          }}
+          className={`h-8 text-xs font-semibold gap-1.5 shadow-md backdrop-blur-sm transition-all ${
+            isMarkingMode
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white animate-pulse'
+              : 'bg-background/90 text-foreground hover:bg-background'
+          }`}
+        >
+          <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+          {isMarkingMode ? 'Batalkan Tandai' : 'Tandai Peta'}
+        </Button>
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setShowMarkers(!showMarkers)}
+          className={`h-8 text-xs gap-1.5 shadow-md bg-background/90 backdrop-blur-sm ${
+            !showMarkers ? 'text-muted-foreground opacity-60' : 'text-foreground'
+          }`}
+          title={showMarkers ? 'Sembunyikan Penanda' : 'Tampilkan Penanda'}
+        >
+          {showMarkers ? <Eye className="w-3.5 h-3.5 text-sky-500" /> : <EyeOff className="w-3.5 h-3.5" />}
+          <span>Penanda ({markers.length})</span>
+        </Button>
+      </div>
+
+      {/* Marking mode guidance banner */}
+      {isMarkingMode && (
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 z-[400] bg-emerald-600 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-xl flex items-center gap-2 animate-bounce">
+          <MapPin className="w-4 h-4" />
+          <span>Klik pada area peta untuk menandai lokasi</span>
+          <button
+            onClick={() => setIsMarkingMode(false)}
+            className="ml-2 bg-emerald-700 hover:bg-emerald-800 rounded-full px-2 py-0.5 text-[10px]"
+          >
+            ✕ Batal
+          </button>
+        </div>
+      )}
+
+      {/* Add Marker Dialog */}
+      <AddMarkerDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        initialCoords={selectedCoords}
+      />
 
       {/* Notice for regular users with no assigned devices */}
       {isRegularUser && devices.length === 0 && (
