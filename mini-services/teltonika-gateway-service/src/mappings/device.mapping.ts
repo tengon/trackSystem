@@ -76,15 +76,51 @@ export function detectDeviceFamilyByImei(imei: string): TeltonikaDeviceProfile {
     };
   }
 
-  if (prefix.startsWith('865501')) {
+  if (prefix.startsWith('861343') || prefix.startsWith('864983') || prefix.startsWith('868019') || prefix.startsWith('354152')) {
     return {
-      family: 'TFT100',
-      name: 'Teltonika TFT100 E-Mobility High Voltage',
+      family: 'FMC001',
+      name: 'Teltonika FMC001 4G OBDII Tracker',
       defaultType: 'vehicle',
-      defaultIconColor: '#84cc16',
+      defaultIconColor: '#8b5cf6',
       hasCanbus: true,
       hasBle: true,
       recommendedCodec: 'Codec 8 Extended',
+    };
+  }
+
+  if (prefix.startsWith('867950') || prefix.startsWith('862214') || prefix.startsWith('357283') || prefix.startsWith('868204')) {
+    return {
+      family: 'FMB001',
+      name: 'Teltonika FMB001 2G OBDII Tracker',
+      defaultType: 'vehicle',
+      defaultIconColor: '#a855f7',
+      hasCanbus: true,
+      hasBle: true,
+      recommendedCodec: 'Codec 8',
+    };
+  }
+
+  if (prefix.startsWith('869003') || prefix.startsWith('868003')) {
+    return {
+      family: 'FMC003',
+      name: 'Teltonika FMC003 4G Plug & Play OBDII',
+      defaultType: 'vehicle',
+      defaultIconColor: '#8b5cf6',
+      hasCanbus: true,
+      hasBle: true,
+      recommendedCodec: 'Codec 8 Extended',
+    };
+  }
+
+  if (prefix.startsWith('867003') || prefix.startsWith('862003')) {
+    return {
+      family: 'FMB003',
+      name: 'Teltonika FMB003 2G Plug & Play OBDII',
+      defaultType: 'vehicle',
+      defaultIconColor: '#a855f7',
+      hasCanbus: true,
+      hasBle: true,
+      recommendedCodec: 'Codec 8',
     };
   }
 

@@ -1,7 +1,5 @@
-/**
- * Teltonika Protocol Decoder (Codec 8, Codec 8 Extended, Codec 16)
- * Supports all Teltonika GPS tracker models (FMB920, FMB120, FMC130, FMC640, RUT955, TMT250, etc.)
- */
+import { decodeObdTelemetry, DecodedObdTelemetry } from './decoders/obd.decoder';
+export { decodeObdTelemetry, DecodedObdTelemetry };
 
 export interface TeltonikaGpsData {
   timestamp: Date;
@@ -14,6 +12,7 @@ export interface TeltonikaGpsData {
   speed: number;
   eventIoId: number;
   ioElements: Record<number, number | bigint>;
+  variableIoElements?: Record<number, string>;
   // Derived telemetry
   ignition?: boolean;
   batteryVoltage?: number;
@@ -21,6 +20,7 @@ export interface TeltonikaGpsData {
   gsmSignal?: number;
   movement?: boolean;
   totalOdometer?: number;
+  obd?: DecodedObdTelemetry;
 }
 
 export interface TeltonikaPacket {
@@ -193,6 +193,7 @@ export function decodeTeltonikaPacket(buffer: Buffer): TeltonikaPacket | null {
     }
 
     // X-Byte (Variable Length) IOs (Codec 8 Extended 0x8E & Codec 16)
+    const variableIoElements: Record<number, string> = {};
     if (isExtended && offset + 2 <= buffer.length) {
       const countXB = buffer.readUInt16BE(offset);
       offset += 2;
@@ -203,6 +204,7 @@ export function decodeTeltonikaPacket(buffer: Buffer): TeltonikaPacket | null {
         offset += 2;
         if (offset + length <= buffer.length) {
           const rawBytes = buffer.subarray(offset, offset + length);
+          variableIoElements[id] = rawBytes.toString('hex');
           if (length === 1) ioElements[id] = rawBytes.readUInt8(0);
           else if (length === 2) ioElements[id] = rawBytes.readUInt16BE(0);
           else if (length === 4) ioElements[id] = rawBytes.readUInt32BE(0);
@@ -212,6 +214,9 @@ export function decodeTeltonikaPacket(buffer: Buffer): TeltonikaPacket | null {
       }
     }
 
+    // OBD-II Sub-decoder (FMC001, FMB001, FMC003, FMB003)
+    const obd = decodeObdTelemetry(ioElements, variableIoElements);
+
     // Derived Telemetry Extraction
     // DIN1 (Ignition) -> IO 239 in Codec 8, or 1 in standard Teltonika DIN
     const extVoltageRaw = Number(ioElements[66] ?? 0);
@@ -219,7 +224,7 @@ export function decodeTeltonikaPacket(buffer: Buffer): TeltonikaPacket | null {
     // Movement -> IO 240
     const movement = ioElements[240] === 1 || speed > 2;
     // External Battery Voltage (mV -> V) -> IO 66
-    const batteryVoltage = extVoltageRaw > 0 ? extVoltageRaw / 1000 : undefined;
+    const batteryVoltage = extVoltageRaw > 0 ? extVoltageRaw / 1000 : obd.controlModuleVoltage;
     // Internal Battery % -> IO 113 or derived from 67 (Backup battery mV)
     const backupVoltageRaw = Number(ioElements[67] ?? 0);
     let backupBatteryPercent: number | undefined = undefined;
@@ -232,9 +237,9 @@ export function decodeTeltonikaPacket(buffer: Buffer): TeltonikaPacket | null {
     }
     // GSM Signal (0-5) -> IO 21
     const gsmSignal = ioElements[21] !== undefined ? Number(ioElements[21]) : undefined;
-    // Odometer (meters -> km) -> IO 87 or IO 16
+    // Odometer (meters -> km) -> IO 87 or IO 16 or OBD
     const odoMeters = Number(ioElements[87] ?? ioElements[16] ?? 0);
-    const totalOdometer = odoMeters > 0 ? Math.round(odoMeters / 1000) : undefined;
+    const totalOdometer = odoMeters > 0 ? Math.round(odoMeters / 1000) : (obd.odometerKm ? Math.round(obd.odometerKm) : undefined);
 
     records.push({
       timestamp,
@@ -247,12 +252,14 @@ export function decodeTeltonikaPacket(buffer: Buffer): TeltonikaPacket | null {
       speed,
       eventIoId,
       ioElements,
+      variableIoElements,
       ignition,
       batteryVoltage,
       backupBatteryPercent,
       gsmSignal,
       movement,
       totalOdometer,
+      obd,
     });
   }
 

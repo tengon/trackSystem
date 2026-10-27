@@ -51,6 +51,7 @@ export function decodeCodec8Extended(buffer: Buffer): RawTeltonikaPacket | null 
       ...gps,
       eventIoId: io.eventIoId,
       ioElements: io.ioElements,
+      variableIoElements: io.variableIoElements,
     });
   }
 

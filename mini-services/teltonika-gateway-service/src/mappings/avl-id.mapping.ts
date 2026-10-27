@@ -40,7 +40,7 @@ export const TELTONIKA_AVL_IDS = {
   GREEN_DRIVING_TYPE: 253,// 1=Harsh Acceleration, 2=Harsh Braking, 3=Harsh Cornering
   GREEN_DRIVING_VALUE: 254,// Green driving g-force value
 
-  // CAN-bus & OBDII Telemetry
+  // CAN-bus & FMS Fleet Telemetry
   CAN_RPM: 85,            // Engine RPM
   CAN_ENGINE_TEMP: 115,   // Engine Temperature in °C
   CAN_FUEL_LEVEL: 84,     // Fuel level percentage (0..100%)
@@ -48,6 +48,40 @@ export const TELTONIKA_AVL_IDS = {
   CAN_ACCELERATOR: 114,   // Accelerator pedal position %
   CAN_ENGINE_HOURS: 102,  // Engine work time / hours
   CAN_VEHICLE_SPEED: 81,  // Vehicle CAN speed
+
+  // FMC001 & FMB001 OBD-II Standard PIDs & OEM Diagnostics
+  OBD_DTC_COUNT: 30,              // Number of diagnostic trouble codes
+  OBD_ENGINE_LOAD: 31,            // Calculated engine load value (%)
+  OBD_COOLANT_TEMP: 32,           // Coolant temperature (°C)
+  OBD_SHORT_FUEL_TRIM: 33,        // Short term fuel trim bank 1 (%)
+  OBD_FUEL_PRESSURE: 34,          // Fuel pressure (kPa)
+  OBD_INTAKE_MAP: 35,             // Intake manifold absolute pressure (kPa)
+  OBD_RPM: 36,                    // Engine RPM
+  OBD_SPEED: 37,                  // Vehicle speed (km/h)
+  OBD_TIMING_ADVANCE: 38,         // Timing advance (deg)
+  OBD_INTAKE_AIR_TEMP: 39,        // Intake air temperature (°C)
+  OBD_MAF: 40,                    // Mass air flow rate (g/s)
+  OBD_THROTTLE_POSITION: 41,      // Throttle position (%)
+  OBD_RUNTIME_SINCE_START: 42,    // Run time since engine start (seconds)
+  OBD_DISTANCE_MIL_ON: 43,        // Distance traveled with MIL lamp ON (km)
+  OBD_FUEL_RAIL_PRESSURE: 44,     // Fuel rail pressure (kPa)
+  OBD_FUEL_RAIL_GAUGE: 45,        // Fuel rail gauge pressure (kPa)
+  OBD_COMMANDED_EGR: 46,          // Commanded EGR (%)
+  OBD_FUEL_LEVEL: 47,             // Fuel level input (%)
+  OBD_DISTANCE_SINCE_CLEAR: 48,   // Distance traveled since codes cleared (km)
+  OBD_BAROMETRIC_PRESSURE: 49,    // Barometric pressure (kPa)
+  OBD_CONTROL_MODULE_VOLTAGE: 50, // Control module voltage (mV)
+  OBD_ABSOLUTE_LOAD: 51,          // Absolute load value (%)
+  OBD_FUEL_AIR_RATIO: 52,         // Fuel/Air commanded equivalence ratio
+  OBD_RELATIVE_THROTTLE: 53,      // Relative throttle position (%)
+  OBD_AMBIENT_AIR_TEMP: 54,       // Ambient air temperature (°C)
+  OBD_THROTTLE_POS_B: 55,         // Absolute throttle position B (%)
+  OBD_ACCEL_PEDAL_POS_D: 56,      // Accelerator pedal position D (%)
+  OBD_ACCEL_PEDAL_POS_E: 57,      // Accelerator pedal position E (%)
+  OBD_COMM_THROTTLE_ACT: 58,      // Commanded throttle actuator (%)
+  OBD_RUNTIME_TOTAL: 59,          // Total engine run time (seconds)
+  OBD_VIN: 256,                   // Vehicle Identification Number (ASCII string)
+  OBD_DTC_CODES: 281,             // Diagnostic Trouble Codes (DTCs)
 
   // BLE (Bluetooth Low Energy) Sensors
   BLE_TEMP_1: 25,         // BLE Temperature Sensor 1 (°C x 10)
@@ -68,7 +102,7 @@ export const TELTONIKA_AVL_IDS = {
   CRASH_EVENT: 247,       // Crash detection event (1=Crash trace, 2=Crash event)
   CRASH_TRACE: 248,       // Crash trace data
   TOWING_DETECTION: 246,  // Towing alarm (1=Towing started)
-  UNPLUG_DETECTION: 252,  // Device unplugged / Power cut alarm
+  UNPLUG_DETECTION: 252,  // Device unplugged / Power cut / OBD unplug alarm
   JAMMING_DETECTION: 249, // GSM Jamming detection
   EXCESSIVE_IDLING: 251,  // Excessive idling alarm
   GEOFENCE_EVENT: 155,    // Auto-geofence enter/exit
@@ -88,7 +122,9 @@ export function isTeltonikaAlarmEvent(eventIoId: number): { isAlarm: boolean; ty
     case TELTONIKA_AVL_IDS.TOWING_DETECTION:
       return { isAlarm: true, type: 'towing', label: 'Kendaraan Diderek / Towing' };
     case TELTONIKA_AVL_IDS.UNPLUG_DETECTION:
-      return { isAlarm: true, type: 'unplugged', label: 'Perangkat Dicabut dari Aki / Sumber Daya' };
+      return { isAlarm: true, type: 'unplugged', label: 'Perangkat Dicabut dari Soket Port OBD / Aki Kendaraan' };
+    case TELTONIKA_AVL_IDS.OBD_DTC_COUNT:
+      return { isAlarm: true, type: 'obd_dtc', label: 'Kode Kerusakan Mesin (DTC) Terdeteksi via OBD-II' };
     case TELTONIKA_AVL_IDS.JAMMING_DETECTION:
       return { isAlarm: true, type: 'jamming', label: 'Sinyal GSM Terganggu / Jamming' };
     case TELTONIKA_AVL_IDS.OVER_SPEEDING:

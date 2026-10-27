@@ -98,6 +98,7 @@ export class TelemetryService {
       odometer: telemetry.telemetry.totalOdometer,
       can: telemetry.can,
       ble: telemetry.ble,
+      obd: telemetry.obd,
       timestamp: telemetry.timestamp,
     };
 

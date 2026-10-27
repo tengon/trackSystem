@@ -13,6 +13,7 @@ export interface RawAvlRecord {
   speed: number;
   eventIoId: number;
   ioElements: Record<number, number | bigint>;
+  variableIoElements?: Record<number, string>;
 }
 
 export interface RawTeltonikaPacket {

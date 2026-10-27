@@ -18,6 +18,7 @@ const httpServer = createHttpServer((req, res) => {
       udpPort: UDP_PORT,
       wsPort: HTTP_PORT,
       supportedCodecs: ['Codec 8 (0x08)', 'Codec 8 Extended (0x8E)', 'Codec 16 (0x10)'],
+      supportedProfiles: ['FMC001 (4G OBDII)', 'FMB001 (2G OBDII)', 'FMC003', 'FMB003', 'FMC920', 'FMB920', 'FMC130', 'FMC640', 'TMT250', 'TFT100'],
     })
   );
 });

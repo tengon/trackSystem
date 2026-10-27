@@ -52,7 +52,7 @@ export default function DeviceMapPopup({
   const modelMeta = getTeltonikaModel(device.model);
   const status = statusConfig[device.status] || statusConfig.offline;
 
-  const isObd = modelMeta.category.toLowerCase().includes('obd') || modelMeta.model.includes('003');
+  const isObd = modelMeta.category.toLowerCase().includes('obd') || modelMeta.model.includes('003') || modelMeta.model.includes('001');
   const isCan = modelMeta.hasCanbus && !isObd;
   const isPersonal = modelMeta.series === 'GH' || modelMeta.series === 'TMT' || device.type === 'person';
   const isAsset = modelMeta.series === 'TAT' || device.type === 'asset';

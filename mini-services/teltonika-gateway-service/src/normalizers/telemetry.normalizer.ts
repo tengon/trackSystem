@@ -7,6 +7,7 @@ import { RawAvlRecord } from '../protocol/teltonika.protocol';
 import { TELTONIKA_AVL_IDS, isTeltonikaAlarmEvent } from '../mappings/avl-id.mapping';
 import { decodeCanTelemetry, DecodedCanTelemetry } from '../decoders/can.decoder';
 import { decodeBleTelemetry, DecodedBleTelemetry } from '../decoders/ble.decoder';
+import { decodeObdTelemetry, DecodedObdTelemetry } from '../decoders/obd.decoder';
 
 export interface NormalizedTelemetry {
   timestamp: Date;
@@ -40,11 +41,14 @@ export interface NormalizedTelemetry {
   };
   can: DecodedCanTelemetry;
   ble: DecodedBleTelemetry;
+  obd: DecodedObdTelemetry;
   rawIo: Record<number, number | bigint>;
+  rawVariableIo?: Record<number, string>;
 }
 
 export function normalizeTelemetryRecord(record: RawAvlRecord): NormalizedTelemetry {
   const io = record.ioElements;
+  const variableIo = record.variableIoElements;
 
   // External Battery Voltage (mV -> V)
   const extVoltageRaw = Number(io[TELTONIKA_AVL_IDS.EXTERNAL_VOLTAGE] ?? 0);
@@ -74,9 +78,12 @@ export function normalizeTelemetryRecord(record: RawAvlRecord): NormalizedTeleme
   // GSM Signal (1-5 bars)
   const gsmSignal = io[TELTONIKA_AVL_IDS.GSM_SIGNAL] !== undefined ? Number(io[TELTONIKA_AVL_IDS.GSM_SIGNAL]) : undefined;
 
-  // Total Odometer (meters -> km)
+  // OBD-II Sub-decoder (FMC001, FMB001, FMC003, FMB003)
+  const obd = decodeObdTelemetry(io, variableIo);
+
+  // Total Odometer (meters -> km): Check IO 87, legacy IO 16, or OBD Odometer
   const odoMeters = Number(io[TELTONIKA_AVL_IDS.ODOMETER] ?? io[TELTONIKA_AVL_IDS.ODOMETER_LEGACY] ?? 0);
-  const totalOdometer = odoMeters > 0 ? Number((odoMeters / 1000).toFixed(1)) : undefined;
+  const totalOdometer = odoMeters > 0 ? Number((odoMeters / 1000).toFixed(1)) : obd.odometerKm;
 
   // Trip distance (meters -> km)
   const tripMeters = Number(io[TELTONIKA_AVL_IDS.TRIP_ODOMETER] ?? io[TELTONIKA_AVL_IDS.TRIP_DISTANCE_250] ?? 0);
@@ -94,8 +101,31 @@ export function normalizeTelemetryRecord(record: RawAvlRecord): NormalizedTeleme
   const can = decodeCanTelemetry(io);
   const ble = decodeBleTelemetry(io);
 
+  // Bridge OBD metrics into CAN fallback if CAN is missing
+  if (can.rpm === undefined && obd.rpm !== undefined) can.rpm = obd.rpm;
+  if (can.engineTemperature === undefined && obd.coolantTemperature !== undefined) {
+    can.engineTemperature = obd.coolantTemperature;
+  }
+  if (can.fuelLevelPercent === undefined && obd.fuelLevelPercent !== undefined) {
+    can.fuelLevelPercent = obd.fuelLevelPercent;
+  }
+  if (can.fuelConsumedLiters === undefined && obd.fuelConsumedLiters !== undefined) {
+    can.fuelConsumedLiters = obd.fuelConsumedLiters;
+  }
+  if (can.acceleratorPedalPercent === undefined && obd.throttlePositionPercent !== undefined) {
+    can.acceleratorPedalPercent = obd.throttlePositionPercent;
+  }
+
   // Alarm event check
-  const alarmEvent = isTeltonikaAlarmEvent(record.eventIoId);
+  let alarmEvent = isTeltonikaAlarmEvent(record.eventIoId);
+
+  // Special OBD Unplug / DTC alarms
+  if (obd.unplugged) {
+    alarmEvent = { isAlarm: true, type: 'unplugged', label: 'Perangkat OBD Dicabut dari Port Kendaraan' };
+  } else if (record.eventIoId === TELTONIKA_AVL_IDS.OBD_DTC_COUNT && obd.isFaultDetected) {
+    const codes = obd.dtcCodes.length > 0 ? ` (${obd.dtcCodes.join(', ')})` : '';
+    alarmEvent = { isAlarm: true, type: 'obd_dtc', label: `Kode Kerusakan OBD-II Terdeteksi${codes}` };
+  }
 
   return {
     timestamp: new Date(record.timestampMs),
@@ -114,7 +144,7 @@ export function normalizeTelemetryRecord(record: RawAvlRecord): NormalizedTeleme
     telemetry: {
       ignition,
       movement,
-      batteryVoltage,
+      batteryVoltage: batteryVoltage ?? obd.controlModuleVoltage,
       backupBatteryPercent,
       batteryCurrentMa: io[TELTONIKA_AVL_IDS.BATTERY_CURRENT] !== undefined ? Number(io[TELTONIKA_AVL_IDS.BATTERY_CURRENT]) : undefined,
       gsmSignal,
@@ -125,6 +155,8 @@ export function normalizeTelemetryRecord(record: RawAvlRecord): NormalizedTeleme
     },
     can,
     ble,
+    obd,
     rawIo: io,
+    rawVariableIo: variableIo,
   };
 }
